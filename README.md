@@ -49,9 +49,7 @@ cd frontend
 flutter pub get
 
 # Run on Chrome (no Xcode needed)
-flutter run -d chrome \
-  --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=YOUR_ANON_KEY
+flutter run -d chrome
 
 # Run on macOS (requires Xcode)
 flutter run -d macos \
