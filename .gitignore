@@ -22,6 +22,7 @@ build/
 # Environment
 .env
 .env.*
+_env*
 
 # Generated files
 *.g.dart
