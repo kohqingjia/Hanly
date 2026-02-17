@@ -33,28 +33,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { text, user_context_summary, user_context_tags } = await req.json();
-    if (!text || typeof text !== "string" || text.length > 1000) {
-      return new Response(
-        JSON.stringify({ error: "Invalid input. Provide 1-1000 characters." }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Build context-aware system prompt
-    let contextClause = '';
-    if (user_context_summary) {
-      contextClause = `\n\nUser context: ${user_context_summary}`;
-      if (user_context_tags?.length) {
-        contextClause += `\nUser focus areas: ${user_context_tags.join(', ')}`;
-      }
-      contextClause += `\nTailor the translation, examples, and notes to this user's context and level.`;
-    }
+    const { chinese_level, learning_purposes, industry, additional_context } =
+      await req.json();
 
     const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY") });
+
+    const userProfile = [
+      `Chinese level: ${chinese_level || "not specified"}`,
+      `Learning purposes: ${(learning_purposes || []).join(", ") || "general"}`,
+      industry ? `Industry: ${industry}` : null,
+      additional_context ? `Additional context: ${additional_context}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -62,23 +53,15 @@ Deno.serve(async (req) => {
       messages: [
         {
           role: "system",
-          content: `You are a Chinese-English dictionary assistant.${contextClause}
+          content: `You are a language learning profile analyzer. Given a user's learning profile, generate:
+1. "context_summary": A 1-2 sentence summary of who this learner is and what they need (e.g. "Intermediate learner working in tech, focused on professional communication and daily conversation.")
+2. "context_tags": An array of 3-8 flat tags that capture their level, purposes, industry, and any keywords from their additional context. Tags should be lowercase, single words or short phrases. Examples: "intermediate", "tech", "business", "travel", "hsk4", "software-engineering", "daily-conversation"
 
-Given an English word or phrase, return a JSON object with:
-- "english": the original English input
-- "chinese": natural, conversational Chinese translation
-- "pinyin": pinyin with tone marks (not numbers)
-- "meaning": a concise English definition/explanation
-- "notes": usage notes or context (1-2 sentences)
-- "examples": array of 1-2 example sentences, each with "zh" (Chinese), "pinyin", and "en" (English)
-- "tags_suggested": array of 1-3 category tags (e.g. "tech", "daily", "formal", "food")
-- "segments": array of objects, one per Chinese character, each with "char" and "py" (pinyin syllable with tone mark)
-
-Always use tone marks in pinyin (e.g. māmā, not ma1ma1). Prefer natural, conversational Chinese.`,
+Return a JSON object with these two fields only.`,
         },
         {
           role: "user",
-          content: text,
+          content: userProfile,
         },
       ],
     });

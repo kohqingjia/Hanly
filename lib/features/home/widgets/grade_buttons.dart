@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/sm2.dart';
+import '../../../core/utils/fsrs.dart';
 
 class GradeButtons extends StatelessWidget {
-  final void Function(Grade grade) onGrade;
+  final void Function(FSRSGrade grade) onGrade;
 
   const GradeButtons({super.key, required this.onGrade});
 
@@ -17,28 +17,28 @@ class GradeButtons extends StatelessWidget {
           context,
           label: 'Again',
           color: isDark ? AppColors.danger : AppColors.dangerLight,
-          onTap: () => onGrade(Grade.again),
+          onTap: () => onGrade(FSRSGrade.again),
         ),
         const SizedBox(width: 8),
         _buildButton(
           context,
           label: 'Hard',
           color: isDark ? AppColors.warning : AppColors.warningLight,
-          onTap: () => onGrade(Grade.hard),
+          onTap: () => onGrade(FSRSGrade.hard),
         ),
         const SizedBox(width: 8),
         _buildButton(
           context,
           label: 'Good',
           color: isDark ? AppColors.accent : AppColors.accentLightMode,
-          onTap: () => onGrade(Grade.good),
+          onTap: () => onGrade(FSRSGrade.good),
         ),
         const SizedBox(width: 8),
         _buildButton(
           context,
           label: 'Easy',
           color: isDark ? AppColors.success : AppColors.successLight,
-          onTap: () => onGrade(Grade.easy),
+          onTap: () => onGrade(FSRSGrade.easy),
         ),
       ],
     );

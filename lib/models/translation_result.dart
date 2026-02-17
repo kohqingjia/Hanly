@@ -6,6 +6,7 @@ class TranslationResult {
   final String chinese;
   final String pinyin;
   final String meaning;
+  final String? notes;
   final List<ExampleSentence> examples;
   final List<String> tagsSuggested;
   final List<Segment> segments;
@@ -15,6 +16,7 @@ class TranslationResult {
     required this.chinese,
     required this.pinyin,
     required this.meaning,
+    this.notes,
     required this.examples,
     required this.tagsSuggested,
     required this.segments,
@@ -26,6 +28,7 @@ class TranslationResult {
         chinese: json['chinese'] as String,
         pinyin: json['pinyin'] as String,
         meaning: json['meaning'] as String,
+        notes: json['notes'] as String?,
         examples: (json['examples'] as List<dynamic>?)
                 ?.map((e) =>
                     ExampleSentence.fromJson(e as Map<String, dynamic>))

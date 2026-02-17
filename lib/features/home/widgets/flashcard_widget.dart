@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../models/flashcard_progress.dart';
+import '../../../models/review_card.dart';
 import '../../../widgets/glass_card.dart';
 import '../../../widgets/ruby_text.dart';
 
 class FlashcardWidget extends StatelessWidget {
-  final FlashcardWithEntry card;
+  final ReviewCardWithWord card;
   final bool isFlipped;
   final VoidCallback onTap;
 
@@ -44,7 +44,7 @@ class FlashcardWidget extends StatelessWidget {
       children: [
         const SizedBox(height: 16),
         Text(
-          card.entry.english,
+          card.word.english,
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 24,
@@ -66,8 +66,9 @@ class FlashcardWidget extends StatelessWidget {
   }
 
   Widget _buildBack(BuildContext context, bool isDark) {
-    final segments = card.entry.segments;
-    final hasPinyin = card.entry.pinyin != null && card.entry.pinyin!.isNotEmpty;
+    final segments = card.word.segments;
+    final hasPinyin =
+        card.word.pinyin != null && card.word.pinyin!.isNotEmpty;
 
     return Column(
       key: const ValueKey('back'),
@@ -83,7 +84,7 @@ class FlashcardWidget extends StatelessWidget {
         else ...[
           if (hasPinyin)
             Text(
-              card.entry.pinyin!,
+              card.word.pinyin!,
               style: TextStyle(
                 fontSize: 14,
                 color: isDark ? AppColors.accent : AppColors.accentLightMode,
@@ -91,18 +92,18 @@ class FlashcardWidget extends StatelessWidget {
             ),
           if (hasPinyin) const SizedBox(height: 4),
           Text(
-            card.entry.chinese,
+            card.word.chinese,
             style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w500,
             ),
           ),
         ],
-        if (card.entry.meaning != null &&
-            card.entry.meaning!.isNotEmpty) ...[
+        if (card.word.meaning != null &&
+            card.word.meaning!.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(
-            card.entry.meaning!,
+            card.word.meaning!,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -111,7 +112,7 @@ class FlashcardWidget extends StatelessWidget {
             ),
           ),
         ],
-        if (card.entry.examples.isNotEmpty) ...[
+        if (card.word.examples.isNotEmpty) ...[
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -126,7 +127,7 @@ class FlashcardWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  card.entry.examples.first.zh,
+                  card.word.examples.first.zh,
                   style: TextStyle(
                     fontSize: 14,
                     color: isDark
@@ -136,7 +137,7 @@ class FlashcardWidget extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  card.entry.examples.first.en,
+                  card.word.examples.first.en,
                   style: TextStyle(
                     fontSize: 13,
                     color: isDark ? AppColors.muted : AppColors.mutedLight,

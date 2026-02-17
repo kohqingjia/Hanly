@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/providers/supabase_provider.dart';
+import '../../../models/profile.dart';
 import '../../../models/translation_result.dart';
+import '../../profile/providers/profile_provider.dart';
 
 class TranslateState {
   final bool isLoading;
@@ -41,8 +43,9 @@ class TranslateState {
 class TranslateNotifier extends StateNotifier<TranslateState> {
   final SupabaseClient _client;
   final User? _user;
+  final Profile? _profile;
 
-  TranslateNotifier(this._client, this._user)
+  TranslateNotifier(this._client, this._user, this._profile)
       : super(const TranslateState());
 
   Future<void> translate(String text) async {
@@ -59,7 +62,11 @@ class TranslateNotifier extends StateNotifier<TranslateState> {
     try {
       final response = await _client.functions.invoke(
         'translate',
-        body: {'text': trimmed},
+        body: {
+          'text': trimmed,
+          'user_context_summary': _profile?.contextSummary,
+          'user_context_tags': _profile?.contextTags,
+        },
       );
 
       if (response.status != 200) {
@@ -79,7 +86,8 @@ class TranslateNotifier extends StateNotifier<TranslateState> {
     } on FunctionException catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: 'Translation failed: ${e.details?['message'] ?? e.reasonPhrase ?? 'Unknown error'}',
+        error:
+            'Translation failed: ${e.details?['message'] ?? e.reasonPhrase ?? 'Unknown error'}',
       );
     } catch (e) {
       state = state.copyWith(
@@ -96,32 +104,23 @@ class TranslateNotifier extends StateNotifier<TranslateState> {
     state = state.copyWith(isSaving: true, clearError: true);
 
     try {
-      final entryResponse = await _client
-          .from('dictionary_entries')
-          .insert({
-            'user_id': _user.id,
-            'english': result.english,
-            'chinese': result.chinese,
-            'pinyin': result.pinyin,
-            'meaning': result.meaning,
-            'notes': '',
-            'examples': result.examples.map((e) => e.toJson()).toList(),
-            'tags': result.tagsSuggested,
-            'is_mastered': false,
-          })
-          .select()
-          .single();
+      final response = await _client.functions.invoke(
+        'save-word',
+        body: {
+          'english': result.english,
+          'chinese': result.chinese,
+          'pinyin': result.pinyin,
+          'meaning': result.meaning,
+          'notes': result.notes ?? '',
+          'examples': result.examples.map((e) => e.toJson()).toList(),
+          'segments': result.segments.map((s) => s.toJson()).toList(),
+          'categories': result.tagsSuggested,
+        },
+      );
 
-      final entryId = entryResponse['id'] as String;
-
-      await _client.from('flashcard_progress').insert({
-        'user_id': _user.id,
-        'entry_id': entryId,
-        'ease': 2.5,
-        'interval_days': 0,
-        'repetitions': 0,
-        'next_review_at': DateTime.now().toUtc().toIso8601String(),
-      });
+      if (response.status != 200) {
+        throw Exception('Save failed');
+      }
 
       state = state.copyWith(isSaving: false, saved: true);
       return true;
@@ -143,5 +142,6 @@ final translateNotifierProvider =
     StateNotifierProvider<TranslateNotifier, TranslateState>((ref) {
   final client = ref.watch(supabaseClientProvider);
   final user = ref.watch(currentUserProvider);
-  return TranslateNotifier(client, user);
+  final profile = ref.watch(profileProvider).value;
+  return TranslateNotifier(client, user, profile);
 });
