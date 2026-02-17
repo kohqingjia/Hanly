@@ -5,48 +5,87 @@ import '../../../core/providers/supabase_provider.dart';
 
 class OnboardingState {
   final int currentStep;
+  final String? displayName;
   final String? chineseLevel;
   final List<String> learningPurposes;
   final String? industry;
   final String? additionalContext;
+  final String? ageRange;
+  final int dailyWordGoal;
   final bool isSubmitting;
   final String? error;
+  // Suggested words
+  final List<Map<String, dynamic>> suggestedWords;
+  final Set<int> selectedWordIndices;
+  final bool isLoadingSuggestions;
+  final bool isSavingWords;
 
   const OnboardingState({
     this.currentStep = 0,
+    this.displayName,
     this.chineseLevel,
     this.learningPurposes = const [],
     this.industry,
     this.additionalContext,
+    this.ageRange,
+    this.dailyWordGoal = 20,
     this.isSubmitting = false,
     this.error,
+    this.suggestedWords = const [],
+    this.selectedWordIndices = const {},
+    this.isLoadingSuggestions = false,
+    this.isSavingWords = false,
   });
 
   bool get needsIndustry =>
       learningPurposes.contains('Work') ||
       learningPurposes.contains('Career Advancement');
 
-  int get totalSteps => needsIndustry ? 4 : 3;
+  // Steps: 0=Name, 1=Level, 2=Purposes, 3=Industry(conditional), 4=Preferences, 5=Suggestions
+  int get totalSteps => needsIndustry ? 6 : 5;
+
+  // The suggestions step is always the last one
+  int get suggestionsStep => needsIndustry ? 5 : 4;
+  int get preferencesStep => needsIndustry ? 4 : 3;
 
   OnboardingState copyWith({
     int? currentStep,
+    String? displayName,
     String? chineseLevel,
     List<String>? learningPurposes,
     String? industry,
     String? additionalContext,
+    String? ageRange,
+    int? dailyWordGoal,
     bool? isSubmitting,
     String? error,
     bool clearError = false,
     bool clearIndustry = false,
+    bool clearAdditionalContext = false,
+    bool clearAgeRange = false,
+    List<Map<String, dynamic>>? suggestedWords,
+    Set<int>? selectedWordIndices,
+    bool? isLoadingSuggestions,
+    bool? isSavingWords,
   }) {
     return OnboardingState(
       currentStep: currentStep ?? this.currentStep,
+      displayName: displayName ?? this.displayName,
       chineseLevel: chineseLevel ?? this.chineseLevel,
       learningPurposes: learningPurposes ?? this.learningPurposes,
       industry: clearIndustry ? null : (industry ?? this.industry),
-      additionalContext: additionalContext ?? this.additionalContext,
+      additionalContext: clearAdditionalContext
+          ? null
+          : (additionalContext ?? this.additionalContext),
+      ageRange: clearAgeRange ? null : (ageRange ?? this.ageRange),
+      dailyWordGoal: dailyWordGoal ?? this.dailyWordGoal,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       error: clearError ? null : (error ?? this.error),
+      suggestedWords: suggestedWords ?? this.suggestedWords,
+      selectedWordIndices: selectedWordIndices ?? this.selectedWordIndices,
+      isLoadingSuggestions:
+          isLoadingSuggestions ?? this.isLoadingSuggestions,
+      isSavingWords: isSavingWords ?? this.isSavingWords,
     );
   }
 }
@@ -57,6 +96,10 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
 
   OnboardingNotifier(this._client, this._user)
       : super(const OnboardingState());
+
+  void setDisplayName(String? name) {
+    state = state.copyWith(displayName: name);
+  }
 
   void setChineseLevel(String level) {
     state = state.copyWith(chineseLevel: level);
@@ -69,7 +112,6 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     } else {
       purposes.add(purpose);
     }
-    // If removing work/career, clear industry
     final needsIndustry =
         purposes.contains('Work') || purposes.contains('Career Advancement');
     state = state.copyWith(
@@ -83,33 +125,67 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
   }
 
   void setAdditionalContext(String? text) {
-    state = state.copyWith(additionalContext: text);
+    state = state.copyWith(
+      additionalContext: text,
+      clearAdditionalContext: text == null,
+    );
+  }
+
+  void setAgeRange(String? range) {
+    state = state.copyWith(
+      ageRange: range,
+      clearAgeRange: range == null,
+    );
+  }
+
+  void setDailyWordGoal(int goal) {
+    state = state.copyWith(dailyWordGoal: goal);
   }
 
   void nextStep() {
-    // Skip industry step if not needed
     int next = state.currentStep + 1;
-    if (next == 2 && !state.needsIndustry) {
-      next = 3; // Skip to additional context
+    // Skip industry step if not needed
+    if (next == 3 && !state.needsIndustry) {
+      next++; // Skip to preferences
     }
     state = state.copyWith(currentStep: next);
   }
 
   void previousStep() {
     int prev = state.currentStep - 1;
-    if (prev == 2 && !state.needsIndustry) {
-      prev = 1; // Skip back over industry
+    if (prev == 3 && !state.needsIndustry) {
+      prev = 2;
     }
     if (prev < 0) prev = 0;
     state = state.copyWith(currentStep: prev);
   }
 
-  Future<bool> submit() async {
+  void toggleWordSelection(int index) {
+    final selected = Set<int>.from(state.selectedWordIndices);
+    if (selected.contains(index)) {
+      selected.remove(index);
+    } else {
+      selected.add(index);
+    }
+    state = state.copyWith(selectedWordIndices: selected);
+  }
+
+  void selectAllWords() {
+    final all = List.generate(state.suggestedWords.length, (i) => i).toSet();
+    state = state.copyWith(selectedWordIndices: all);
+  }
+
+  void deselectAllWords() {
+    state = state.copyWith(selectedWordIndices: {});
+  }
+
+  /// Submit profile data, generate context, fetch suggestions, advance to suggestions step.
+  Future<bool> submitAndFetchSuggestions() async {
     if (_user == null) return false;
     state = state.copyWith(isSubmitting: true, clearError: true);
 
     try {
-      // Call generate-context edge function
+      // Step 1: Generate context
       final response = await _client.functions.invoke(
         'generate-context',
         body: {
@@ -135,23 +211,131 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
             [];
       }
 
-      // Update profile with all onboarding data
+      // Step 2: Save profile (but keep onboarding_completed = false)
       await _client.from('profiles').update({
+        'display_name': state.displayName,
+        'age_range': state.ageRange,
         'chinese_level': state.chineseLevel,
         'learning_purposes': state.learningPurposes,
         'industry': state.industry,
         'additional_context': state.additionalContext,
+        'daily_word_goal': state.dailyWordGoal,
         'context_summary': contextSummary,
         'context_tags': contextTags,
-        'onboarding_completed': true,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', _user.id);
 
-      state = state.copyWith(isSubmitting: false);
+      // Step 3: Advance to suggestions step and start loading
+      state = state.copyWith(
+        isSubmitting: false,
+        currentStep: state.suggestionsStep,
+        isLoadingSuggestions: true,
+      );
+
+      // Step 4: Fetch suggested words
+      final suggestResponse = await _client.functions.invoke(
+        'suggest-words',
+        body: {
+          'context_summary': contextSummary,
+          'context_tags': contextTags,
+          'chinese_level': state.chineseLevel,
+        },
+      );
+
+      if (suggestResponse.status == 200) {
+        final rawData = suggestResponse.data;
+        final Map<String, dynamic> data = rawData is String
+            ? jsonDecode(rawData) as Map<String, dynamic>
+            : rawData as Map<String, dynamic>;
+        final words = (data['words'] as List<dynamic>?)
+                ?.map((e) => e as Map<String, dynamic>)
+                .toList() ??
+            [];
+
+        // Select all by default
+        final allIndices = List.generate(words.length, (i) => i).toSet();
+        state = state.copyWith(
+          suggestedWords: words,
+          selectedWordIndices: allIndices,
+          isLoadingSuggestions: false,
+        );
+      } else {
+        state = state.copyWith(isLoadingSuggestions: false);
+      }
+
       return true;
     } catch (e) {
       state = state.copyWith(
         isSubmitting: false,
+        isLoadingSuggestions: false,
+        error: e.toString(),
+      );
+      return false;
+    }
+  }
+
+  /// Save selected words and complete onboarding.
+  Future<bool> saveSelectedAndComplete() async {
+    if (_user == null) return false;
+    state = state.copyWith(isSavingWords: true, clearError: true);
+
+    try {
+      // Build list of selected words
+      final wordsToSave = state.selectedWordIndices
+          .where((i) => i < state.suggestedWords.length)
+          .map((i) {
+        final w = state.suggestedWords[i];
+        return {
+          'english': w['english'],
+          'chinese': w['chinese'],
+          'pinyin': w['pinyin'],
+          'meaning': w['meaning'],
+          'examples': w['examples'] ?? [],
+          'segments': w['segments'] ?? [],
+          'categories': w['tags_suggested'] ?? [],
+        };
+      }).toList();
+
+      if (wordsToSave.isNotEmpty) {
+        await _client.functions.invoke(
+          'batch-save-words',
+          body: {'words': wordsToSave},
+        );
+      }
+
+      // Mark onboarding complete
+      await _client.from('profiles').update({
+        'onboarding_completed': true,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', _user.id);
+
+      state = state.copyWith(isSavingWords: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isSavingWords: false,
+        error: e.toString(),
+      );
+      return false;
+    }
+  }
+
+  /// Skip suggestions and just complete onboarding.
+  Future<bool> skipAndComplete() async {
+    if (_user == null) return false;
+    state = state.copyWith(isSavingWords: true, clearError: true);
+
+    try {
+      await _client.from('profiles').update({
+        'onboarding_completed': true,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', _user.id);
+
+      state = state.copyWith(isSavingWords: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isSavingWords: false,
         error: e.toString(),
       );
       return false;

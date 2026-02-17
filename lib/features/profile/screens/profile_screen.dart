@@ -23,6 +23,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   List<String> _editPurposes = [];
   String? _editIndustry;
   final _editContextController = TextEditingController();
+  double? _sliderValue;
 
   @override
   void dispose() {
@@ -173,17 +174,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             .animate()
                             .fadeIn(duration: 400.ms, delay: 300.ms)
                             .slideY(begin: 0.03, end: 0, duration: 400.ms, delay: 300.ms),
-                        const SizedBox(height: 16),
-
-                        // Stats row
-                        _buildStatsRow(isDark)
-                            .animate()
-                            .fadeIn(duration: 400.ms, delay: 400.ms)
-                            .slideY(begin: 0.03, end: 0, duration: 400.ms, delay: 400.ms),
                         const SizedBox(height: 24),
 
                         // Sign out
                         _buildSignOutButton(isDark)
+                            .animate()
+                            .fadeIn(duration: 400.ms, delay: 400.ms),
+                        const SizedBox(height: 12),
+
+                        // Delete account
+                        _buildDeleteAccountButton(isDark)
                             .animate()
                             .fadeIn(duration: 400.ms, delay: 500.ms),
                         const SizedBox(height: 32),
@@ -411,6 +411,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _buildPreferencesCard(bool isDark, dynamic profile) {
     final themeMode = ref.watch(themeModeProvider);
+    final displayGoal = _sliderValue?.round() ?? profile.dailyWordGoal as int;
 
     return GlassCard(
       padding: const EdgeInsets.all(20),
@@ -467,7 +468,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Daily Goal: ${profile.dailyWordGoal} words',
+                  'Daily Goal: $displayGoal words',
                   style: TextStyle(
                     fontSize: 15,
                     color: isDark
@@ -479,96 +480,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ],
           ),
           Slider(
-            value: (profile.dailyWordGoal as int).toDouble(),
+            value: _sliderValue ?? (profile.dailyWordGoal as int).toDouble(),
             min: 5,
             max: 50,
             divisions: 9,
             activeColor:
                 isDark ? AppColors.accent : AppColors.accentLightMode,
             onChanged: (value) {
+              setState(() => _sliderValue = value);
+            },
+            onChangeEnd: (value) {
               ref.read(profileUpdateProvider.notifier).updateProfile({
                 'daily_word_goal': value.round(),
               });
+              setState(() => _sliderValue = null);
             },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsRow(bool isDark) {
-    final client = ref.watch(supabaseClientProvider);
-    final user = ref.watch(currentUserProvider);
-
-    return FutureBuilder(
-      future: _loadStats(client, user?.id),
-      builder: (context, snapshot) {
-        final stats = snapshot.data ?? {'active': 0, 'archived': 0, 'reviewed': 0};
-        return Row(
-          children: [
-            Expanded(child: _buildStatCard(isDark, '${stats['active']}', 'Active Words')),
-            const SizedBox(width: 12),
-            Expanded(child: _buildStatCard(isDark, '${stats['archived']}', 'Archived')),
-            const SizedBox(width: 12),
-            Expanded(child: _buildStatCard(isDark, '${stats['reviewed']}', 'Reviewed Today')),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<Map<String, int>> _loadStats(dynamic client, String? userId) async {
-    if (userId == null) return {'active': 0, 'archived': 0, 'reviewed': 0};
-    try {
-      final activeResult = await client
-          .from('user_words')
-          .select()
-          .eq('user_id', userId)
-          .eq('is_archived', false);
-      final archivedResult = await client
-          .from('user_words')
-          .select()
-          .eq('user_id', userId)
-          .eq('is_archived', true);
-      final today = DateTime.now().toUtc();
-      final startOfDay = DateTime.utc(today.year, today.month, today.day);
-      final reviewedResult = await client
-          .from('review_cards')
-          .select()
-          .eq('user_id', userId)
-          .gte('last_reviewed_at', startOfDay.toIso8601String());
-
-      return {
-        'active': (activeResult as List).length,
-        'archived': (archivedResult as List).length,
-        'reviewed': (reviewedResult as List).length,
-      };
-    } catch (_) {
-      return {'active': 0, 'archived': 0, 'reviewed': 0};
-    }
-  }
-
-  Widget _buildStatCard(bool isDark, String value, String label) {
-    return GlassCard(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              color: isDark ? AppColors.accent : AppColors.accentLightMode,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              color: isDark ? AppColors.muted : AppColors.mutedLight,
-            ),
           ),
         ],
       ),
@@ -621,6 +547,85 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           fontSize: 11,
           fontWeight: FontWeight.w500,
           color: isDark ? AppColors.accentLight : AppColors.accentLightMode,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeleteAccountButton(bool isDark) {
+    return SizedBox(
+      width: double.infinity,
+      child: GestureDetector(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor:
+                  isDark ? AppColors.backgroundElevated : Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              title: const Text('Delete Account?'),
+              content: const Text(
+                'This will permanently delete your account and all your saved words, flashcards, and progress. This cannot be undone.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      final client = ref.read(supabaseClientProvider);
+                      final response = await client.functions.invoke(
+                        'delete-account',
+                        body: {},
+                      );
+                      if (response.status == 200) {
+                        // User deleted server-side; clear local session only
+                        try {
+                          await client.auth.signOut();
+                        } catch (_) {
+                          // Expected: server rejects since user is already deleted
+                        }
+                      } else if (mounted) {
+                        AppToast.show(
+                          context,
+                          message: 'Failed to delete account',
+                          type: ToastType.error,
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        AppToast.show(
+                          context,
+                          message: 'Failed to delete account',
+                          type: ToastType.error,
+                        );
+                      }
+                    }
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor:
+                        isDark ? AppColors.danger : AppColors.dangerLight,
+                  ),
+                  child: const Text('Delete'),
+                ),
+              ],
+            ),
+          );
+        },
+        child: Center(
+          child: Text(
+            'Delete Account',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: (isDark ? AppColors.danger : AppColors.dangerLight)
+                  .withValues(alpha: 0.7),
+            ),
+          ),
         ),
       ),
     );

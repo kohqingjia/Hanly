@@ -8,9 +8,6 @@ class GlobalWord {
   final String? meaning;
   final List<String> categories;
   final int addCount;
-  final double? avgRating;
-  final int ratingCount;
-  final double? difficultyEstimate;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -22,9 +19,6 @@ class GlobalWord {
     this.meaning,
     this.categories = const [],
     this.addCount = 1,
-    this.avgRating,
-    this.ratingCount = 0,
-    this.difficultyEstimate,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -43,10 +37,6 @@ class GlobalWord {
                 .toList() ??
             [],
         addCount: json['add_count'] as int? ?? 1,
-        avgRating: (json['avg_rating'] as num?)?.toDouble(),
-        ratingCount: json['rating_count'] as int? ?? 0,
-        difficultyEstimate:
-            (json['difficulty_estimate'] as num?)?.toDouble(),
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
       );

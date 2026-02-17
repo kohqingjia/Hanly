@@ -1,12 +1,12 @@
-- LLM functions too slow, need to reduce time taken to generate and save words. Maybe making prompts less complex, or save words in background.
-- after pressing save to dictionary shouldnt the card disappaear? 
-- Dictionary tab needs to update whenever clicked to fetch latest data.
-- dictionary word card looks strange, why does it have the chinese word twice, it also doesnt display the example sentence.  
-- Translate needs to take in better context, needs to produce better tags. maybe we have a preset tags and not generate them.
-- problem with onboarding page after adding additional context. is there name? is there suggest words? 
-- improve database logic on global dictionary rating, average score etc. can remove if not needed. 
-- onboarding should include name, no need avatar url, daily word goal should be added.
-- profile tab not able to edit daily word goal. profile page no need to see active archive words, these will be saved in the progress dashboard in the future.
+- LLM function is reall too slow, need to reduce time taken to generate. 
+- Translate needs to produce better tags. preset tags need to be more robust?
+- pinyin needs to be properly formatted to match the word below. 
+- can refer to previous project (bytelingo)
+
+future considerations:
 - consider using docker
+- use dictionary api for static easy search, llm function for more vague queries
+- improve database logic on global dictionary rating, average score etc. how are these calculated? the rating should be suggestion rating, this is where users can rate the suggested word. then aggregate it to one row for the global one. i think average score is not needed.
 
-
+note:
+Redeployed with --no-verify-jwt. The function still verifies the user internally via authClient.auth.getUser(), so it's still secure — this just bypasses the infrastructure-level JWT check that was blocking the request before it reached your code.

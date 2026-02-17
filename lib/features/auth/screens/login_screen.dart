@@ -61,7 +61,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (mode == AuthMode.signUp) {
         AppToast.show(
           context,
-          message: 'Account created! Check your email to confirm.',
+          message: 'Account created!',
           type: ToastType.success,
         );
       }

@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../widgets/app_toast.dart';
 import '../../../widgets/shimmer_loader.dart';
+import '../../dictionary/providers/dictionary_provider.dart';
 import '../providers/flashcard_provider.dart';
 import '../providers/translate_provider.dart';
 import '../widgets/flashcard_empty_state.dart';
@@ -171,11 +172,15 @@ class HomeScreen extends ConsumerWidget {
                                   .saveToDict();
                               if (success && context.mounted) {
                                 ref.invalidate(flashcardNotifierProvider);
+                                ref.invalidate(dictionaryNotifierProvider);
                                 AppToast.show(
                                   context,
                                   message: 'Word saved to dictionary!',
                                   type: ToastType.success,
                                 );
+                                ref
+                                    .read(translateNotifierProvider.notifier)
+                                    .clear();
                               }
                             },
                           ).animate().fadeIn(duration: 400.ms).slideY(

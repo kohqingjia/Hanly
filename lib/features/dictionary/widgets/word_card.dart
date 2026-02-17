@@ -35,14 +35,25 @@ class WordCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Chinese with pinyin
+                    // Pinyin + Chinese characters via RubyText, or plain Chinese fallback
                     if (word.segments.isNotEmpty)
                       RubyText(
                         segments: word.segments,
                         charSize: 24,
                         pinyinSize: 10,
                       )
-                    else
+                    else ...[
+                      // Show pinyin separately when no segments
+                      if (word.pinyin != null && word.pinyin!.isNotEmpty)
+                        Text(
+                          word.pinyin!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark
+                                ? AppColors.accent
+                                : AppColors.accentLightMode,
+                          ),
+                        ),
                       Text(
                         word.chinese,
                         style: TextStyle(
@@ -53,8 +64,9 @@ class WordCard extends StatelessWidget {
                               : AppColors.foregroundLight,
                         ),
                       ),
+                    ],
                     const SizedBox(height: 6),
-                    // English
+                    // English translation
                     Text(
                       word.english,
                       style: TextStyle(
@@ -142,6 +154,60 @@ class WordCard extends StatelessWidget {
                 fontSize: 13,
                 color: isDark ? AppColors.muted : AppColors.mutedLight,
                 height: 1.4,
+              ),
+            ),
+          ],
+          // Example sentence (show first one)
+          if (word.examples.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.black.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.04),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (word.examples.first.pinyin.isNotEmpty)
+                    Text(
+                      word.examples.first.pinyin,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isDark
+                            ? AppColors.accent
+                            : AppColors.accentLightMode,
+                      ),
+                    ),
+                  if (word.examples.first.pinyin.isNotEmpty)
+                    const SizedBox(height: 2),
+                  Text(
+                    word.examples.first.zh,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: isDark
+                          ? AppColors.foreground
+                          : AppColors.foregroundLight,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    word.examples.first.en,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? AppColors.muted : AppColors.mutedLight,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../../../core/providers/tab_index_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../widgets/shimmer_loader.dart';
 import '../providers/dictionary_provider.dart';
@@ -38,6 +39,13 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final state = ref.watch(dictionaryNotifierProvider);
     final isDesktop = MediaQuery.of(context).size.width >= 640;
+
+    // Reload words when dictionary tab becomes active
+    ref.listen(currentTabIndexProvider, (prev, next) {
+      if (next == 1 && prev != 1) {
+        ref.read(dictionaryNotifierProvider.notifier).loadWords();
+      }
+    });
 
     return Scaffold(
       body: Container(

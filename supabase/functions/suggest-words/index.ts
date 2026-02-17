@@ -33,28 +33,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { text, user_context_summary, user_context_tags } = await req.json();
-    if (!text || typeof text !== "string" || text.length > 1000) {
-      return new Response(
-        JSON.stringify({ error: "Invalid input. Provide 1-1000 characters." }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Build context-aware system prompt
-    let contextClause = '';
-    if (user_context_summary) {
-      contextClause = `\n\nUser context: ${user_context_summary}`;
-      if (user_context_tags?.length) {
-        contextClause += `\nUser focus areas: ${user_context_tags.join(', ')}`;
-      }
-      contextClause += `\nTailor the translation, example, and meaning to this user's context and level.`;
-    }
+    const { context_summary, context_tags, chinese_level } = await req.json();
 
     const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY") });
+
+    const tagsList = (context_tags || []).join(", ");
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -62,24 +45,29 @@ Deno.serve(async (req) => {
       messages: [
         {
           role: "system",
-          content: `You are a Chinese-English dictionary assistant for language learners.${contextClause}
+          content: `You are a Chinese vocabulary recommender for language learners.
+User profile: ${context_summary || "General learner"}
+Focus areas: ${tagsList || "general"}
+Chinese level: ${chinese_level || "beginner"}
 
-The user will input a word or phrase in ANY format: English, Chinese characters, pinyin (with or without tones), misspelled Chinese, romanized Chinese, or a mixture. Infer the intended word/phrase from context and provide the best match.
+Generate exactly 18 starter vocabulary words appropriate for this learner's level and interests.
 
-Return a JSON object with:
-- "english": the English word/phrase (the original input if English, or the English translation if Chinese/pinyin input)
-- "chinese": natural, conversational Chinese translation (simplified)
+Return a JSON object with a "words" array. Each word object has:
+- "english": English word/phrase
+- "chinese": simplified Chinese
 - "pinyin": pinyin with tone marks (e.g. māmā, not ma1ma1)
-- "meaning": a concise English definition/explanation
-- "examples": array with exactly 1 example sentence, with "zh" (Chinese), "pinyin", and "en" (English)
+- "meaning": concise English definition
+- "examples": array with exactly 1 example sentence, each with "zh" (Chinese), "pinyin", "en" (English)
 - "tags_suggested": 1-2 tags from ONLY these categories: daily, work, travel, food, academic, formal, casual, culture
 - "segments": array of objects, one per Chinese character, each with "char" and "py" (pinyin syllable with tone mark)
 
-Always use tone marks in pinyin. Prefer natural, conversational Chinese.`,
+Mix practical everyday words with words relevant to the user's specific interests.
+Order from simpler to more advanced.
+Always use tone marks in pinyin.`,
         },
         {
           role: "user",
-          content: text,
+          content: "Generate starter vocabulary for me.",
         },
       ],
     });
