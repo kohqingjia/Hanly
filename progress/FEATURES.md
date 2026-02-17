@@ -11,13 +11,15 @@
 2. [Word Bank (Core)](#2-word-bank-core)
 3. [Flashcard Learning (Spaced Repetition)](#3-flashcard-learning-spaced-repetition)
 4. [Quiz Mode](#4-quiz-mode)
-5. [Progress Dashboard](#5-progress-dashboard)
-6. [Global Word Bank & Popularity](#6-global-word-bank--popularity)
-7. [Word Recommendations](#7-word-recommendations)
-8. [Similar User Recommendations](#8-similar-user-recommendations)
-9. [Onboarding Word Suggestions](#9-onboarding-word-suggestions)
-10. [Future Features](#10-future-features)
-11. [Consolidated Data Model Summary](#11-consolidated-data-model-summary)
+5. [Dictionary Page](#5-dictionary-page)
+6. [Settings / Profile Page](#6-settings--profile-page)
+7. [Progress Dashboard](#7-progress-dashboard)
+8. [Global Word Bank & Popularity](#8-global-word-bank--popularity)
+9. [Word Recommendations](#9-word-recommendations)
+10. [Similar User Recommendations](#10-similar-user-recommendations)
+11. [Onboarding Word Suggestions](#11-onboarding-word-suggestions)
+12. [Future Features](#12-future-features)
+13. [Consolidated Data Model Summary](#13-consolidated-data-model-summary)
 
 ---
 
@@ -91,13 +93,17 @@ Each word bank entry contains the full linguistic data: the word itself, pinyin 
 ### Add Word Flow
 
 1. User types input (English, pinyin, or Chinese characters) into the search/add bar.
-2. App calls the LLM edge function with: `{ input, input_type, user_context_summary, user_context_tags, existing_word_ids[] }`.
-3. LLM returns the best-match word plus metadata.
+2. App **always** calls the LLM edge function with: `{ input, input_type, user_context_summary, user_context_tags, existing_word_ids[] }`.
+3. LLM returns a **personalized** result: meaning, notes, and examples tailored to the user's context. The LLM always generates fresh — it does not check the global bank first.
 4. User reviews the result card and taps "Add to Word Bank" (or edits before saving).
 5. On save:
-   - Insert into `user_words` (the user's personal copy).
-   - Upsert into `global_words` (the shared canonical entry) — see [Section 6](#6-global-word-bank--popularity).
+   - Insert into `user_words` (the user's personal copy, with personalized meaning/notes/examples).
+   - Check `global_words` for existing match by `UNIQUE(chinese, pinyin)`:
+     - If match → link `user_words.global_word_id`, increment `add_count`, merge new categories.
+     - If no match → create new `global_words` entry with neutral data (combined meaning, segments, aggregated categories — no examples).
    - Auto-create a `review_cards` row for this word with initial FSRS state.
+
+**Key principle:** Examples and notes are **always personalized per user** and stored only in `user_words`. The `global_words` table never stores examples — see [Section 8](#8-global-word-bank--popularity).
 
 ### Data Requirements
 
@@ -247,6 +253,24 @@ Each card tracks three state variables:
 - The streak system uses `last_completed_date` (a date, not timestamp) to handle timezone-correct day boundaries. The app sends the user's local date when completing a deck.
 - `review_cards` is auto-created when a word is added to `user_words`. This can be a database trigger or application-level logic.
 
+### Category Filtering for Flashcards
+
+Users can filter their review deck by categories before starting a review session. This allows focused study on specific vocabulary groups (e.g., "business only", "food only").
+
+**UI:**
+- Filter chips displayed above the flashcard area on the home screen.
+- Chips are pulled from the distinct `user_words.categories` values for the current user.
+- Default: "All" (no filter applied).
+- Selecting a category filters the due cards query to only include words with that category.
+- Filter is in-memory only — resets on app restart.
+
+**Query modification:**
+- When a category filter is active, the `get_due_cards` RPC (or query) adds a filter: `user_words.categories @> ARRAY[:selected_category]`.
+- Multiple category selection is not supported in this iteration (single-select only).
+
+**Data Requirements:**
+- No new tables or columns needed. Uses existing `user_words.categories` text[] field.
+
 ---
 
 ## 4. Quiz Mode
@@ -328,7 +352,103 @@ This ensures the quiz reinforces learning where it's most needed, rather than le
 
 ---
 
-## 5. Progress Dashboard
+## 5. Dictionary Page
+
+### Feature Description
+
+The dictionary page is the user's personal vocabulary browser. It shows all words the user has added to their word bank, with search, filtering, and management capabilities.
+
+### Layout
+
+1. **Header**: "Dictionary" title with total word count badge.
+
+2. **Active / Archived toggle**: `SegmentedButton` or `ChoiceChip` pair at the top. Default: Active.
+   - **Active**: shows `user_words` where `is_archived = false`.
+   - **Archived**: shows `user_words` where `is_archived = true`.
+
+3. **Search bar**: Glass-styled `TextField` below the toggle.
+   - Debounced (300ms).
+   - Searches across: `chinese`, `pinyin`, `english`, `meaning` fields.
+   - Uses the `search_user_words` RPC function (server-side `ilike` across all fields).
+   - Placeholder: "Search by word, pinyin, or meaning..."
+
+4. **Word list**: `ListView.builder` of word cards, sorted by `created_at DESC` (newest first).
+   - Pull-to-refresh support.
+   - Empty state with illustration when no words match.
+
+### Word Card
+
+Each word is displayed as a `GlassCard` containing:
+- **Chinese characters** (large, bold, 24sp) with **pinyin above** via `RubyText` widget (if `segments` available).
+- **English** word/phrase (16sp, below the Chinese).
+- **Meaning** (14sp, muted color, max 2 lines with ellipsis).
+- **Category pills** (small rounded containers with semi-transparent accent backgrounds).
+- **Creation date** (12sp, muted, bottom-right).
+- **3-dot menu** (`PopupMenuButton`) in the top-right corner:
+  - **Archive** / **Unarchive** (toggles `is_archived`).
+  - **Delete permanently** (hard delete with confirmation dialog: "This will permanently delete this word and its review progress. This action cannot be undone.").
+
+### Actions
+
+- **Archive**: Sets `user_words.is_archived = true`. The word disappears from the active list and moves to the archived list. Review cards for archived words are excluded from the flashcard deck (the `get_due_cards` RPC filters on `is_archived = false`).
+- **Unarchive**: Sets `user_words.is_archived = false`. The word returns to the active list and its review card becomes eligible for the flashcard deck again.
+- **Delete permanently**: Hard deletes the `user_words` row. The associated `review_cards` row is deleted via CASCADE. The `global_words` entry is NOT affected (other users may reference it). A confirmation dialog is required before deletion.
+
+### Data Requirements
+
+No new tables needed. Reads from `user_words` with the existing schema. Uses the `search_user_words` RPC for search queries.
+
+**Considerations:**
+- Search is server-side via RPC for efficiency. Client-side filtering is acceptable for small word banks (< 200 words) but the RPC approach scales better.
+- The 3-dot menu should be accessible but not visually dominant — it's a secondary action.
+- When a word is deleted, if the user has an active flashcard review session, the deleted card should be removed from the in-memory deck.
+
+---
+
+## 6. Settings / Profile Page
+
+### Feature Description
+
+The settings page allows users to view and edit their profile, learning context, and app preferences. It also provides basic statistics and a sign-out option.
+
+### Layout
+
+1. **Profile header**: Avatar circle (initials if no image) + display name (editable) + email (read-only).
+
+2. **Learning Context section** (`GlassCard`):
+   - **Chinese level**: current selection displayed, tap to edit (shows level picker).
+   - **Learning purposes**: current selections as pills, tap to edit (opens multi-select).
+   - **Industry**: current selection (if applicable), tap to edit.
+   - **Additional context**: current text, tap to edit (opens text field).
+   - **"Save Changes" button**: visible when any field has changed. On save:
+     1. Update the changed fields in `profiles` table.
+     2. Call `generate-context` edge function to regenerate `context_summary` and `context_tags`.
+     3. Update `profiles.context_summary` and `profiles.context_tags` with the new values.
+
+3. **Preferences section** (`GlassCard`):
+   - **Theme**: Dark / Light toggle (`Switch` widget). Persisted to `profiles.theme_preference` and `shared_preferences` (for offline/instant feedback).
+   - **Daily word goal**: Slider or number input (5-50 range, default 20). Persisted to `profiles.daily_word_goal`.
+
+4. **Stats section** (`GlassCard` with grid of stat items):
+   - **Total words**: count of `user_words` where `is_archived = false`.
+   - **Archived words**: count of `user_words` where `is_archived = true`.
+   - **Words reviewed today**: count of `review_cards` where `last_reviewed_at >= start_of_today`.
+   - These are simple count queries, no `daily_stats` table needed yet.
+
+5. **Sign out button**: Danger-styled (red text on glass). Shows confirmation dialog: "Are you sure you want to sign out?" On confirm: `supabase.auth.signOut()`.
+
+### Data Requirements
+
+No new tables needed. Reads/writes to `profiles` table (already expanded with onboarding fields). Uses `generate-context` edge function for context regeneration.
+
+**Considerations:**
+- Context regeneration is an async operation (LLM call). Show a loading indicator while generating.
+- Theme toggle should feel instant — update `shared_preferences` + local state immediately, then persist to DB in background.
+- The stats section is intentionally simple for this iteration. The full progress dashboard (Section 7) with charts and trends comes in a later iteration.
+
+---
+
+## 7. Progress Dashboard
 
 ### Feature Description
 
@@ -386,17 +506,38 @@ A statistics overview showing the user's learning progress over time.
 
 ---
 
-## 6. Global Word Bank & Popularity
+## 8. Global Word Bank & Popularity
 
 ### Feature Description
 
-A shared, canonical dictionary of all words ever added by any user. When a user adds a word, the system checks if it already exists in the global bank. If yes, link to it and increment its popularity. If no, create a new global entry.
+A shared, canonical dictionary of all words ever added by any user. The global bank stores **minimal, neutral word identity data** — no examples, no personalized notes. Its purpose is deduplication, popularity tracking, and powering recommendations.
 
 This enables:
-- **Popularity/heat scores** — frequently-added words are "hot".
-- **Global cache** — avoid redundant LLM calls for the same word.
-- **Future recommendation engine** — recommend popular words to new users.
+- **Popularity/heat scores** — frequently-added words are "hot", filtered by user context.
+- **Context-filtered recommendations** — recommend popular words matching the user's `context_tags`, level, and categories.
+- **Level-appropriate suggestions** — `difficulty_estimate` matches words to user proficiency.
 - **Rating system** — users can rate the quality of translations.
+
+### Translation Flow: LLM-First Always
+
+The LLM is **always** called when a user adds a word, regardless of whether the word already exists in the global bank. This ensures every user gets a personalized translation (meaning, notes, examples) tailored to their `context_summary` and `context_tags`.
+
+**Flow:**
+1. User types input → call LLM edge function with user context → get personalized result.
+2. **After** LLM returns, check `global_words` for existing match by `UNIQUE(chinese, pinyin)`.
+3. If match found → link `user_words.global_word_id` to existing entry, increment `add_count`, merge any new categories.
+4. If no match → create new `global_words` entry with neutral/general data (combined meaning, no examples).
+5. Store the personalized version (meaning, notes, examples) in `user_words`.
+
+### Deduplication Strategy: `chinese + pinyin`
+
+The global bank deduplicates on **`UNIQUE(chinese, pinyin)`**:
+
+- **Heteronyms** (same characters, different pronunciation) get **separate entries**: 行 (háng, "row/profession") vs 行 (xíng, "to walk/okay").
+- **Polysemy** (same characters, same pronunciation, different senses) gets **one entry with combined meaning**: 加油 (jiā yóu) → meaning: "to add fuel; (fig.) expression of encouragement, 'go for it!'"
+- This matches how real dictionaries work — different pronunciation = genuinely different word; same pronunciation = polysemy within one lexical item.
+
+**Why not `chinese + english`?** LLM wording varies ("spend" vs "to spend" vs "spend money"), making English unreliable as a dedup key. Pinyin is linguistically deterministic for a given word.
 
 ### Data Requirements
 
@@ -405,26 +546,25 @@ This enables:
 | Field | Type | Nullable | Default | Notes |
 |-------|------|----------|---------|-------|
 | `id` | uuid (PK) | no | `gen_random_uuid()` | |
-| `english` | text | no | — | Canonical English form. |
 | `chinese` | text | no | — | Canonical Chinese form. |
-| `pinyin` | text | no | — | Pinyin with tone marks. |
-| `meaning` | text | yes | null | General-purpose meaning (not user-context-specific). |
-| `notes` | text | yes | null | General usage notes. |
-| `examples` | jsonb | no | `'[]'` | Canonical example sentences. |
-| `segments` | jsonb | no | `'[]'` | Character-level pinyin breakdown. |
+| `pinyin` | text | no | — | Pinyin with tone marks. Part of dedup key. |
+| `segments` | jsonb | no | `'[]'` | Character-level pinyin breakdown. Linguistic, not context-dependent. |
+| `meaning` | text | yes | null | Combined/general meaning across all senses (e.g., "to add fuel; encouragement"). Not user-specific. |
 | `categories` | text[] | no | `'{}'` | Aggregated categories from all users who added this word. |
 | `add_count` | int | no | `1` | How many users have added this word (popularity). |
 | `avg_rating` | float | yes | null | Average user rating (1-5). |
 | `rating_count` | int | no | `0` | Number of ratings. |
-| `difficulty_estimate` | float | yes | null | Derived from average FSRS difficulty across all users who study this word. Useful for recommendations. |
+| `difficulty_estimate` | float | yes | null | Derived from average FSRS difficulty across all users who study this word. Useful for level-matching recommendations. |
 | `created_at` | timestamptz | no | `now()` | When first added to global bank. |
 | `updated_at` | timestamptz | no | `now()` | Last metadata update. |
 
+**Not stored in `global_words`:** `examples` (always personalized per-user), `notes` (always personalized per-user), `english` (varies by user context and LLM wording — lives in `user_words`).
+
 **Indexes:**
-- `(english)` + `(chinese)` — for deduplication lookups.
+- `UNIQUE(chinese, pinyin)` — the dedup constraint.
 - `(add_count DESC)` — for popularity-sorted queries.
-- GIN on `categories` — for category-based recommendations.
-- GIN trigram on `english`, `chinese`, `pinyin` — for search.
+- GIN on `categories` — for context-filtered recommendations (array overlap with user's `context_tags`).
+- GIN trigram on `chinese`, `pinyin` — for search.
 
 **Table: `word_ratings`**
 
@@ -438,17 +578,34 @@ This enables:
 
 **Unique constraint:** `(user_id, global_word_id)` — one rating per user per word.
 
-**Considerations:**
-- **Deduplication logic**: When a user adds a word, match against `global_words` by `chinese` text (exact match). If multiple results, use `english` as a secondary match. Fuzzy matching (e.g., simplified vs traditional) is a future consideration.
+### How Global Bank Powers Recommendations
+
+All recommendations are **context-filtered** — they match the user's `context_tags`, `chinese_level`, and categories. A business learner gets popular business words, not popular travel words.
+
+- **Contextual popularity**: recommend high `add_count` words where `global_words.categories` overlaps with the user's `context_tags`. Not raw global popularity — filtered to the user's domain/interests.
+  ```sql
+  SELECT gw.* FROM global_words gw
+  WHERE gw.categories && :user_context_tags  -- array overlap
+    AND NOT EXISTS (SELECT 1 FROM user_words uw WHERE uw.global_word_id = gw.id AND uw.user_id = :uid)
+  ORDER BY gw.add_count DESC
+  LIMIT 20;
+  ```
+- **Level-matching**: `difficulty_estimate` filters words appropriate to user's `chinese_level` (beginner < 4, intermediate 4-7, advanced > 7).
+- **Similar-user**: find users with overlapping `profiles.context_tags` → get their recently-added words → rank by frequency among similar users → exclude words current user already has.
+- **Onboarding**: LLM generates starter pack based on user profile → cross-reference with global bank → link existing entries.
+- **At recommendation acceptance**: call LLM to generate personalized meaning/examples for the user's context.
+
+### Considerations
 - `add_count` is incremented via a trigger or application logic when a `user_words` row references a `global_word_id`.
-- `difficulty_estimate` is periodically recomputed from `review_cards.difficulty` across all users who have this word — this helps recommend appropriately-levelled words to new users.
+- `difficulty_estimate` is periodically recomputed from `review_cards.difficulty` across all users who have this word.
 - `avg_rating` and `rating_count` are denormalised from `word_ratings` for fast reads. Update via trigger on rating insert/update.
 - RLS on `global_words`: all authenticated users can **read**. Only the system (service role) should **write/update** to prevent tampering. User actions (add, rate) go through controlled application logic.
 - `word_ratings` uses standard user-owns-own-rows RLS.
+- Fuzzy matching (e.g., simplified vs traditional Chinese) is a future consideration.
 
 ---
 
-## 7. Word Recommendations
+## 9. Word Recommendations
 
 ### Feature Description
 
@@ -457,7 +614,7 @@ When a user adds a word to their word bank, the system suggests related words. T
 ### Recommendation Sources
 
 1. **LLM contextual suggestions** — When a word is added, the LLM response includes a `related_words` array of 3-5 suggestions. These are words commonly used in the same context.
-2. **Global popularity** — Recommend popular words from `global_words` that the user hasn't added yet.
+2. **Context-filtered popularity** — Recommend popular words from `global_words` where `categories` overlap with the user's `context_tags`, excluding words the user has already added.
 3. **Random new word** — User taps a button → LLM generates a word based on: user profile context, existing word bank categories, and words the user does NOT already have.
 
 ### Filtering Logic
@@ -500,7 +657,7 @@ All recommendation paths must exclude:
 
 ---
 
-## 8. Similar User Recommendations
+## 10. Similar User Recommendations
 
 ### Feature Description
 
@@ -539,7 +696,7 @@ No new table needed. The query relies on:
 
 ---
 
-## 9. Onboarding Word Suggestions
+## 11. Onboarding Word Suggestions
 
 ### Feature Description
 
@@ -582,18 +739,18 @@ The LLM edge function response shape for onboarding suggestions:
 
 ---
 
-## 10. Future Features
+## 12. Future Features
 
 These are documented for data model awareness but are **not part of the current iteration**.
 
-### 10a. Sentence Practice Mode *(future)*
+### 12a. Sentence Practice Mode *(future)*
 Users construct sentences using words from their word bank. The LLM evaluates grammar, word choice, and naturalness.
 
 **Data implications:**
 - New table: `sentence_attempts` — stores the user's sentence, the target words used, LLM feedback, correctness score.
 - Links to `user_words` via a junction table or uuid array.
 
-### 10b. Camera / Photo Word Capture *(future)*
+### 12b. Camera / Photo Word Capture *(future)*
 User takes a photo or selects from camera roll, highlights Chinese text, and adds words to the word bank.
 
 **Data implications:**
@@ -601,7 +758,7 @@ User takes a photo or selects from camera roll, highlights Chinese text, and add
 - `user_words.source = 'camera'` to track acquisition channel.
 - Optional: store the source image URL in a `source_metadata` jsonb field on `user_words`.
 
-### 10c. PDF Upload & Highlight *(future)*
+### 12c. PDF Upload & Highlight *(future)*
 Upload a PDF, highlight words, and add them to the word bank.
 
 **Data implications:**
@@ -609,13 +766,32 @@ Upload a PDF, highlight words, and add them to the word bank.
 - New table or `source_metadata` on `user_words` to track: PDF file reference, page number, highlight position.
 - `user_words.source = 'pdf'`.
 
-### 10d. Voice Input *(future)*
+### 12d. Voice Input *(future)*
 Speak a word (in English or Chinese) to add it to the word bank.
 
 **Data implications:**
 - Speech-to-text processing (on-device or via edge function).
 - `user_words.source = 'voice'`.
 - Optional: store the audio clip URL for review/playback.
+
+### 12e. Level Progress Suggestions *(future)*
+After reaching certain milestones, the system suggests that the user update their profile to better reflect their current level and learning context.
+
+**Trigger conditions (any of):**
+- 50+ words with `review_cards.stability >= 30` (considered "mastered").
+- Average `review_cards.difficulty` across active cards drops below 3.0 (most cards feel "easy").
+- Quiz accuracy consistently > 80% over the last 10 quiz sessions.
+- User has been at the same `chinese_level` for 60+ days with active daily reviews.
+
+**UX:**
+- A non-intrusive banner or card appears on the home screen: "Your performance suggests you might be ready for the next level. Would you like to update your profile?"
+- On accept: navigate to profile editing screen, pre-suggest the next level up.
+- On dismiss: don't show again for 30 days.
+- After profile update: regenerate `context_summary` and `context_tags` via the `generate-context` edge function. Future translations and recommendations will reflect the new level.
+
+**Data implications:**
+- No new tables needed. Uses existing `review_cards.difficulty`, `review_cards.stability`, and `profiles.chinese_level`.
+- Could store last dismissed date in `shared_preferences` or a `user_settings` jsonb field.
 
 ### Future-Proofing in Current Schema
 The `user_words.source` field and a nullable `source_metadata jsonb` column on `user_words` are sufficient to accommodate all future input methods without schema changes. Adding `source_metadata` now is low-cost and avoids a future migration:
@@ -626,7 +802,7 @@ The `user_words.source` field and a nullable `source_metadata jsonb` column on `
 
 ---
 
-## 11. Consolidated Data Model Summary
+## 13. Consolidated Data Model Summary
 
 ### All Tables
 
@@ -697,7 +873,7 @@ auth.users
 | `streaks` | `(user_id)` UNIQUE | One per user |
 | `quiz_sessions` | `(user_id, completed_at DESC)` | Quiz history |
 | `daily_stats` | `(user_id, date)` UNIQUE | One per user per day |
-| `global_words` | `(chinese)`, `(english)` | Dedup lookups |
+| `global_words` | `UNIQUE(chinese, pinyin)` | Dedup constraint |
 | `global_words` | `(add_count DESC)` | Popularity queries |
 | `global_words` | GIN on `categories` | Category recommendations |
 | `word_suggestions` | `(user_id, status, created_at DESC)` | Pending suggestions |
@@ -706,14 +882,20 @@ auth.users
 
 1. **FSRS over SM-2**: FSRS achieves 20-30% fewer reviews for the same retention. Its three-component model (Difficulty, Stability, Retrievability) is more accurate than SM-2's single ease factor. The `review_logs` table enables future per-user parameter optimisation.
 
-2. **Separate `user_words` and `global_words`**: Users own their personal copies (with personal notes, categories). The global table is the shared canonical reference. This separation enables personal customisation while building a shared knowledge base.
+2. **Separate `user_words` and `global_words`**: Users own their personal copies (with personalized meaning, notes, examples). The global table stores minimal neutral data (word identity, combined meaning, segments, aggregated categories — no examples). This separation enables personal customisation while building a shared knowledge base.
 
-3. **`review_logs` as append-only**: Never update or delete. This is the training data for FSRS parameter tuning and the source of truth for all time-based analytics.
+3. **LLM-first always**: The LLM is always called for personalized translations, even if the word exists in `global_words`. Deduplication happens after the LLM returns, by matching `UNIQUE(chinese, pinyin)`. This maximises personalization at the cost of LLM calls.
 
-4. **`daily_stats` as pre-aggregated cache**: Computing stats from `review_logs` on every dashboard load is expensive at scale. Pre-aggregate daily and query the summary table instead.
+4. **Dedup on `chinese + pinyin`**: Heteronyms (same characters, different pronunciation like 行 háng/xíng) get separate global entries. Polysemy (same characters, same pronunciation like 加油) gets one entry with combined meaning. Matches real dictionary conventions.
 
-5. **`word_suggestions` as a cached queue**: Recommendations are computed asynchronously and stored, not generated on every page load. This decouples the recommendation engine from the UI response time.
+5. **Context-filtered recommendations**: Global popularity is always filtered by `categories && user_context_tags` overlap. A business learner sees popular business words, not popular travel words.
 
-6. **Soft-archive over hard delete for words**: `user_words.is_archived = true` instead of `DELETE`. Preserves review history, quiz references, and global word counts.
+6. **`review_logs` as append-only**: Never update or delete. This is the training data for FSRS parameter tuning and the source of truth for all time-based analytics.
 
-7. **`source` + `source_metadata` on `user_words`**: Future-proofs for camera, PDF, voice input methods without schema migrations.
+7. **`daily_stats` as pre-aggregated cache**: Computing stats from `review_logs` on every dashboard load is expensive at scale. Pre-aggregate daily and query the summary table instead.
+
+8. **`word_suggestions` as a cached queue**: Recommendations are computed asynchronously and stored, not generated on every page load. This decouples the recommendation engine from the UI response time.
+
+9. **Soft-archive over hard delete for words**: `user_words.is_archived = true` instead of `DELETE`. Preserves review history, quiz references, and global word counts.
+
+10. **`source` + `source_metadata` on `user_words`**: Future-proofs for camera, PDF, voice input methods without schema migrations.
