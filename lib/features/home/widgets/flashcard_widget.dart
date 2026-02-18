@@ -126,15 +126,22 @@ class FlashcardWidget extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  card.word.examples.first.zh,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: isDark
-                        ? AppColors.foreground
-                        : AppColors.foregroundLight,
+                if (card.word.examples.first.segments.isNotEmpty)
+                  RubyText(
+                    segments: card.word.examples.first.segments,
+                    charSize: 14,
+                    pinyinSize: 9,
+                  )
+                else
+                  Text(
+                    card.word.examples.first.zh,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark
+                          ? AppColors.foreground
+                          : AppColors.foregroundLight,
+                    ),
                   ),
-                ),
                 const SizedBox(height: 4),
                 Text(
                   card.word.examples.first.en,

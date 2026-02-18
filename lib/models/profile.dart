@@ -4,7 +4,7 @@ class Profile {
   final String? ageRange;
   final String? chineseLevel;
   final List<String> learningPurposes;
-  final String? industry;
+  final List<String> interests;
   final String? additionalContext;
   final String? contextSummary;
   final List<String> contextTags;
@@ -20,7 +20,7 @@ class Profile {
     this.ageRange,
     this.chineseLevel,
     this.learningPurposes = const [],
-    this.industry,
+    this.interests = const [],
     this.additionalContext,
     this.contextSummary,
     this.contextTags = const [],
@@ -40,7 +40,10 @@ class Profile {
                 ?.map((e) => e as String)
                 .toList() ??
             [],
-        industry: json['industry'] as String?,
+        interests: (json['interests'] as List<dynamic>?)
+                ?.map((e) => e as String)
+                .toList() ??
+            [],
         additionalContext: json['additional_context'] as String?,
         contextSummary: json['context_summary'] as String?,
         contextTags: (json['context_tags'] as List<dynamic>?)
@@ -62,7 +65,7 @@ class Profile {
         'age_range': ageRange,
         'chinese_level': chineseLevel,
         'learning_purposes': learningPurposes,
-        'industry': industry,
+        'interests': interests,
         'additional_context': additionalContext,
         'context_summary': contextSummary,
         'context_tags': contextTags,

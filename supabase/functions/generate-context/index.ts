@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { chinese_level, learning_purposes, industry, additional_context } =
+    const { chinese_level, learning_purposes, interests, additional_context } =
       await req.json();
 
     const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY") });
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     const userProfile = [
       `Chinese level: ${chinese_level || "not specified"}`,
       `Learning purposes: ${(learning_purposes || []).join(", ") || "general"}`,
-      industry ? `Industry: ${industry}` : null,
+      (interests || []).length ? `Interests/sectors: ${interests.join(", ")}` : null,
       additional_context ? `Additional context: ${additional_context}` : null,
     ]
       .filter(Boolean)
@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
           role: "system",
           content: `You are a language learning profile analyzer. Given a user's learning profile, generate:
 1. "context_summary": A 1-2 sentence summary of who this learner is and what they need (e.g. "Intermediate learner working in tech, focused on professional communication and daily conversation.")
-2. "context_tags": An array of 3-8 flat tags that capture their level, purposes, industry, and any keywords from their additional context. Tags should be lowercase, single words or short phrases. Examples: "intermediate", "tech", "business", "travel", "hsk4", "software-engineering", "daily-conversation"
+2. "context_tags": An array of 3-8 flat tags that capture their level, purposes, interests/sectors, and any keywords from their additional context. Tags should be lowercase, single words or short phrases. Examples: "intermediate", "tech", "business", "travel", "hsk4", "software-engineering", "daily-conversation", "food", "sports"
 
 Return a JSON object with these two fields only.`,
         },

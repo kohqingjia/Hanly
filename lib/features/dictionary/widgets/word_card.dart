@@ -177,28 +177,23 @@ class WordCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (word.examples.first.pinyin.isNotEmpty)
+                  if (word.examples.first.segments.isNotEmpty)
+                    RubyText(
+                      segments: word.examples.first.segments,
+                      charSize: 13,
+                      pinyinSize: 8,
+                    )
+                  else
                     Text(
-                      word.examples.first.pinyin,
+                      word.examples.first.zh,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
                         color: isDark
-                            ? AppColors.accent
-                            : AppColors.accentLightMode,
+                            ? AppColors.foreground
+                            : AppColors.foregroundLight,
                       ),
                     ),
-                  if (word.examples.first.pinyin.isNotEmpty)
-                    const SizedBox(height: 2),
-                  Text(
-                    word.examples.first.zh,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: isDark
-                          ? AppColors.foreground
-                          : AppColors.foregroundLight,
-                    ),
-                  ),
                   const SizedBox(height: 2),
                   Text(
                     word.examples.first.en,

@@ -1,7 +1,10 @@
-- LLM function is reall too slow, need to reduce time taken to generate. 
-- Translate needs to produce better tags. preset tags need to be more robust?
-- pinyin needs to be properly formatted to match the word below. 
-- can refer to previous project (bytelingo)
+- LLM function is really too slow, especially for onboarding suggestion. need to reduce time taken to generate. 
+- Add more general tags like conversational, etc
+- pinyin STILL NOT BEING SHOWN IN CARDS, HIGHLIGHT MAIN WORD NOT HIGHLIGHTED.
+- flashcard UI looks abyssmal 
+- learning content edit in profile sucks.
+- light mode default, dark mode toggle stored and cache to device. 
+
 
 future considerations:
 - consider using docker

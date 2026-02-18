@@ -25,7 +25,21 @@ class RubyText extends StatelessWidget {
     return Wrap(
       spacing: 2,
       children: segments.map((seg) {
-        return Column(
+        final isPunctuation =
+            RegExp(r'^[，。！？、；：\u201C\u201D\u2018\u2019（）\s.!?,;:()]+$').hasMatch(seg.char);
+        final isAscii = RegExp(r'^[a-zA-Z0-9\s]+$').hasMatch(seg.char);
+
+        if (isPunctuation || isAscii) {
+          return Text(
+            seg.char,
+            style: TextStyle(
+              fontSize: charSize,
+              fontWeight: FontWeight.w500,
+            ),
+          );
+        }
+
+        Widget content = Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (seg.py.isNotEmpty)
@@ -47,6 +61,20 @@ class RubyText extends StatelessWidget {
             ),
           ],
         );
+
+        if (seg.highlight) {
+          content = Container(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+            decoration: BoxDecoration(
+              color: (isDark ? AppColors.accent : AppColors.accentLightMode)
+                  .withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: content,
+          );
+        }
+
+        return content;
       }).toList(),
     );
   }

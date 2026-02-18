@@ -40,7 +40,7 @@ class ProfileUpdateNotifier extends StateNotifier<AsyncValue<void>> {
   Future<Map<String, dynamic>?> regenerateContext({
     required String chineseLevel,
     required List<String> learningPurposes,
-    String? industry,
+    List<String> interests = const [],
     String? additionalContext,
   }) async {
     if (_user == null) return null;
@@ -51,7 +51,7 @@ class ProfileUpdateNotifier extends StateNotifier<AsyncValue<void>> {
         body: {
           'chinese_level': chineseLevel,
           'learning_purposes': learningPurposes,
-          'industry': industry,
+          'interests': interests,
           'additional_context': additionalContext,
         },
       );
@@ -68,7 +68,7 @@ class ProfileUpdateNotifier extends StateNotifier<AsyncValue<void>> {
       await _client.from('profiles').update({
         'chinese_level': chineseLevel,
         'learning_purposes': learningPurposes,
-        'industry': industry,
+        'interests': interests,
         'additional_context': additionalContext,
         'context_summary': data['context_summary'],
         'context_tags': data['context_tags'],

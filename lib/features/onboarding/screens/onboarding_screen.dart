@@ -7,6 +7,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/glass_decoration.dart';
 import 'package:go_router/go_router.dart';
 import '../../../widgets/app_toast.dart';
+import '../../home/providers/flashcard_provider.dart';
+import '../../profile/providers/profile_provider.dart';
 import '../providers/onboarding_provider.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -129,7 +131,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         _buildNameStep(state, isDark),
                         _buildLevelStep(state, isDark),
                         _buildPurposesStep(state, isDark),
-                        _buildIndustryStep(state, isDark),
+                        _buildInterestsStep(state, isDark),
                         _buildPreferencesStep(state, isDark),
                         _buildSuggestionsStep(state, isDark),
                       ],
@@ -151,18 +153,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget _buildProgressDots(OnboardingState state, bool isDark) {
     final total = state.totalSteps;
     final current = state.currentStep;
-    // Map current step to dot index (skip industry step in dot count if not needed)
-    int dotIndex;
-    if (!state.needsIndustry && current >= 3) {
-      dotIndex = current - 1; // Shift down since industry (3) is skipped
-    } else {
-      dotIndex = current;
-    }
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(total, (i) {
-        final isActive = i <= dotIndex;
+        final isActive = i <= current;
         return Container(
           width: isActive ? 24 : 8,
           height: 8,
@@ -496,9 +491,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  // Step 3: Industry (conditional)
-  Widget _buildIndustryStep(OnboardingState state, bool isDark) {
-    const industries = [
+  // Step 3: Sector / Interests (multi-select, shown to everyone)
+  Widget _buildInterestsStep(OnboardingState state, bool isDark) {
+    const interests = [
       'Technology',
       'Finance',
       'Healthcare',
@@ -511,7 +506,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       'Media',
       'Government',
       'Retail',
-      'Other',
+      'Food & Dining',
+      'Sports & Fitness',
+      'Music & Arts',
+      'Travel & Tourism',
+      'Gaming',
+      'Science',
+      'Fashion',
+      'Environment',
+      'Culture & History',
     ];
 
     return SingleChildScrollView(
@@ -523,7 +526,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           children: [
             const SizedBox(height: 24),
             Text(
-              "What's your industry?",
+              "What are you interested in?",
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 24,
@@ -534,29 +537,30 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              "We'll tailor vocabulary to your field",
+              "Select all that apply — we'll tailor your vocabulary",
               style: TextStyle(
                 fontSize: 14,
                 color: isDark ? AppColors.muted : AppColors.mutedLight,
               ),
             ),
-            const SizedBox(height: 32),
-            ...industries.asMap().entries.map((entry) {
-              final industry = entry.value;
-              final isSelected = state.industry == industry;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: GestureDetector(
+            const SizedBox(height: 24),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: interests.asMap().entries.map((entry) {
+                final interest = entry.value;
+                final isSelected = state.interests.contains(interest);
+                return GestureDetector(
                   onTap: () {
                     ref
                         .read(onboardingProvider.notifier)
-                        .setIndustry(industry);
+                        .toggleInterest(interest);
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: double.infinity,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 14),
+                        horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? (isDark
@@ -566,7 +570,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           : isDark
                               ? Colors.white.withValues(alpha: 0.05)
                               : Colors.white.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(999),
                       border: Border.all(
                         color: isSelected
                             ? (isDark
@@ -575,42 +579,37 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             : isDark
                                 ? Colors.white.withValues(alpha: 0.08)
                                 : Colors.black.withValues(alpha: 0.06),
+                        width: isSelected ? 1.5 : 1,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            industry,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                              color: isSelected
-                                  ? (isDark
-                                      ? AppColors.accentLight
-                                      : AppColors.accentLightMode)
-                                  : (isDark
-                                      ? AppColors.foreground
-                                      : AppColors.foregroundLight),
-                            ),
-                          ),
-                        ),
-                        if (isSelected)
-                          Icon(
-                            LucideIcons.check,
-                            size: 18,
-                            color: isDark
-                                ? AppColors.accent
-                                : AppColors.accentLightMode,
-                          ),
-                      ],
+                    child: Text(
+                      interest,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w400,
+                        color: isSelected
+                            ? (isDark
+                                ? AppColors.accentLight
+                                : AppColors.accentLightMode)
+                            : (isDark
+                                ? AppColors.foreground
+                                : AppColors.foregroundLight),
+                      ),
                     ),
                   ),
-                ),
-              );
-            }),
+                )
+                    .animate()
+                    .fadeIn(
+                        duration: 300.ms,
+                        delay: Duration(milliseconds: 20 * entry.key))
+                    .scale(
+                        begin: const Offset(0.9, 0.9),
+                        end: const Offset(1, 1),
+                        duration: 300.ms,
+                        delay: Duration(milliseconds: 20 * entry.key));
+              }).toList(),
+            ),
           ],
         ),
       ),
@@ -1108,7 +1107,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             .read(onboardingProvider.notifier)
                             .skipAndComplete();
                         if (success && mounted) {
-                          context.go('/');
+                          ref.invalidate(profileProvider);
+                          ref.invalidate(flashcardNotifierProvider);
+                          await Future.delayed(const Duration(milliseconds: 100));
+                          if (mounted) context.go('/');
                         }
                       },
                 child: Container(
@@ -1142,7 +1144,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             .read(onboardingProvider.notifier)
                             .saveSelectedAndComplete();
                         if (success && mounted) {
-                          context.go('/');
+                          ref.invalidate(profileProvider);
+                          ref.invalidate(flashcardNotifierProvider);
+                          await Future.delayed(const Duration(milliseconds: 100));
+                          if (mounted) context.go('/');
                         } else if (!success && mounted) {
                           AppToast.show(
                             context,

@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/translation_result.dart';
 import '../../../widgets/glass_card.dart';
+import '../../../widgets/ruby_text.dart';
 
 class TranslationResultCard extends StatelessWidget {
   final TranslationResult result;
@@ -52,27 +53,27 @@ class TranslationResultCard extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // MEANING label
-          Text(
-            'MEANING',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: isDark ? AppColors.muted : AppColors.mutedLight,
-              letterSpacing: 1.2,
+          // Meaning (only shown when provided)
+          if (result.meaning != null && result.meaning!.isNotEmpty) ...[
+            Text(
+              'MEANING',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppColors.muted : AppColors.mutedLight,
+                letterSpacing: 1.2,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-
-          // Meaning text
-          Text(
-            result.meaning,
-            style: TextStyle(
-              fontSize: 14,
-              color: isDark ? AppColors.foreground : AppColors.foregroundLight,
-              height: 1.5,
+            const SizedBox(height: 6),
+            Text(
+              result.meaning!,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? AppColors.foreground : AppColors.foregroundLight,
+                height: 1.5,
+              ),
             ),
-          ),
+          ],
 
           // Examples
           if (result.examples.isNotEmpty) ...[
@@ -106,29 +107,24 @@ class TranslationResultCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Pinyin for sentence
-                        if (ex.pinyin.isNotEmpty)
+                        // Chinese sentence with pinyin via RubyText
+                        if (ex.segments.isNotEmpty)
+                          RubyText(
+                            segments: ex.segments,
+                            charSize: 15,
+                            pinyinSize: 9,
+                          )
+                        else
                           Text(
-                            ex.pinyin,
+                            ex.zh,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
                               color: isDark
-                                  ? AppColors.accent
-                                  : AppColors.accentLightMode,
+                                  ? AppColors.foreground
+                                  : AppColors.foregroundLight,
                             ),
                           ),
-                        if (ex.pinyin.isNotEmpty) const SizedBox(height: 2),
-                        // Chinese sentence
-                        Text(
-                          ex.zh,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: isDark
-                                ? AppColors.foreground
-                                : AppColors.foregroundLight,
-                          ),
-                        ),
                         const SizedBox(height: 4),
                         // English translation
                         Text(

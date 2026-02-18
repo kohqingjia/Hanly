@@ -110,7 +110,7 @@ class TranslateNotifier extends StateNotifier<TranslateState> {
           'english': result.english,
           'chinese': result.chinese,
           'pinyin': result.pinyin,
-          'meaning': result.meaning,
+          'meaning': result.meaning ?? '',
           'notes': result.notes ?? '',
           'examples': result.examples.map((e) => e.toJson()).toList(),
           'segments': result.segments.map((s) => s.toJson()).toList(),

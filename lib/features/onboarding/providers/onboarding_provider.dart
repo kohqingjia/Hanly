@@ -8,7 +8,7 @@ class OnboardingState {
   final String? displayName;
   final String? chineseLevel;
   final List<String> learningPurposes;
-  final String? industry;
+  final List<String> interests;
   final String? additionalContext;
   final String? ageRange;
   final int dailyWordGoal;
@@ -25,7 +25,7 @@ class OnboardingState {
     this.displayName,
     this.chineseLevel,
     this.learningPurposes = const [],
-    this.industry,
+    this.interests = const [],
     this.additionalContext,
     this.ageRange,
     this.dailyWordGoal = 20,
@@ -37,30 +37,23 @@ class OnboardingState {
     this.isSavingWords = false,
   });
 
-  bool get needsIndustry =>
-      learningPurposes.contains('Work') ||
-      learningPurposes.contains('Career Advancement');
-
-  // Steps: 0=Name, 1=Level, 2=Purposes, 3=Industry(conditional), 4=Preferences, 5=Suggestions
-  int get totalSteps => needsIndustry ? 6 : 5;
-
-  // The suggestions step is always the last one
-  int get suggestionsStep => needsIndustry ? 5 : 4;
-  int get preferencesStep => needsIndustry ? 4 : 3;
+  // Steps: 0=Name, 1=Level, 2=Purposes, 3=Interests, 4=Preferences, 5=Suggestions
+  int get totalSteps => 6;
+  int get suggestionsStep => 5;
+  int get preferencesStep => 4;
 
   OnboardingState copyWith({
     int? currentStep,
     String? displayName,
     String? chineseLevel,
     List<String>? learningPurposes,
-    String? industry,
+    List<String>? interests,
     String? additionalContext,
     String? ageRange,
     int? dailyWordGoal,
     bool? isSubmitting,
     String? error,
     bool clearError = false,
-    bool clearIndustry = false,
     bool clearAdditionalContext = false,
     bool clearAgeRange = false,
     List<Map<String, dynamic>>? suggestedWords,
@@ -73,7 +66,7 @@ class OnboardingState {
       displayName: displayName ?? this.displayName,
       chineseLevel: chineseLevel ?? this.chineseLevel,
       learningPurposes: learningPurposes ?? this.learningPurposes,
-      industry: clearIndustry ? null : (industry ?? this.industry),
+      interests: interests ?? this.interests,
       additionalContext: clearAdditionalContext
           ? null
           : (additionalContext ?? this.additionalContext),
@@ -112,16 +105,17 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     } else {
       purposes.add(purpose);
     }
-    final needsIndustry =
-        purposes.contains('Work') || purposes.contains('Career Advancement');
-    state = state.copyWith(
-      learningPurposes: purposes,
-      clearIndustry: !needsIndustry,
-    );
+    state = state.copyWith(learningPurposes: purposes);
   }
 
-  void setIndustry(String? industry) {
-    state = state.copyWith(industry: industry);
+  void toggleInterest(String interest) {
+    final interests = List<String>.from(state.interests);
+    if (interests.contains(interest)) {
+      interests.remove(interest);
+    } else {
+      interests.add(interest);
+    }
+    state = state.copyWith(interests: interests);
   }
 
   void setAdditionalContext(String? text) {
@@ -143,19 +137,11 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
   }
 
   void nextStep() {
-    int next = state.currentStep + 1;
-    // Skip industry step if not needed
-    if (next == 3 && !state.needsIndustry) {
-      next++; // Skip to preferences
-    }
-    state = state.copyWith(currentStep: next);
+    state = state.copyWith(currentStep: state.currentStep + 1);
   }
 
   void previousStep() {
     int prev = state.currentStep - 1;
-    if (prev == 3 && !state.needsIndustry) {
-      prev = 2;
-    }
     if (prev < 0) prev = 0;
     state = state.copyWith(currentStep: prev);
   }
@@ -191,7 +177,7 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
         body: {
           'chinese_level': state.chineseLevel,
           'learning_purposes': state.learningPurposes,
-          'industry': state.industry,
+          'interests': state.interests,
           'additional_context': state.additionalContext,
         },
       );
@@ -217,7 +203,7 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
         'age_range': state.ageRange,
         'chinese_level': state.chineseLevel,
         'learning_purposes': state.learningPurposes,
-        'industry': state.industry,
+        'interests': state.interests,
         'additional_context': state.additionalContext,
         'daily_word_goal': state.dailyWordGoal,
         'context_summary': contextSummary,

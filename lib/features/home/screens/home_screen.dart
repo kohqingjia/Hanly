@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../widgets/app_toast.dart';
 import '../../../widgets/shimmer_loader.dart';
 import '../../dictionary/providers/dictionary_provider.dart';
 import '../providers/flashcard_provider.dart';
 import '../providers/translate_provider.dart';
-import '../widgets/flashcard_empty_state.dart';
-import '../widgets/flashcard_widget.dart';
-import '../widgets/grade_buttons.dart';
 import '../widgets/translate_input.dart';
 import '../widgets/translation_result_card.dart';
 
@@ -23,6 +22,7 @@ class HomeScreen extends ConsumerWidget {
     final isDesktop = size.width >= 640;
     final flashcardState = ref.watch(flashcardNotifierProvider);
     final translateState = ref.watch(translateNotifierProvider);
+    final dueCount = flashcardState.dueCount;
 
     return Scaffold(
       body: Container(
@@ -95,15 +95,139 @@ class HomeScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Flashcard header
-                        _buildFlashcardHeader(context, flashcardState, isDark)
+                        // App title
+                        ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [AppColors.accent, AppColors.accentLight],
+                          ).createShader(bounds),
+                          child: const Text(
+                            'Hanly',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        )
                             .animate()
                             .fadeIn(duration: 500.ms)
                             .slideY(begin: -0.1, end: 0, duration: 500.ms),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
 
-                        // Flashcard area
-                        _buildFlashcardArea(context, ref, flashcardState)
+                        // Quiz & Flashcard buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  AppToast.show(
+                                    context,
+                                    message: 'Quiz coming soon!',
+                                    type: ToastType.info,
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : Colors.white.withValues(alpha: 0.7),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : Colors.black.withValues(alpha: 0.06),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        LucideIcons.brain,
+                                        size: 16,
+                                        color: isDark
+                                            ? AppColors.muted
+                                            : AppColors.mutedLight,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Quiz',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: isDark
+                                              ? AppColors.muted
+                                              : AppColors.mutedLight,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => context.push('/flashcards'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [AppColors.accent, AppColors.accentLight],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.accent.withValues(alpha: 0.3),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        LucideIcons.layers,
+                                        size: 16,
+                                        color: Colors.white,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Text(
+                                        'Flashcards',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      if (dueCount > 0) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 7, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.25),
+                                            borderRadius: BorderRadius.circular(999),
+                                          ),
+                                          child: Text(
+                                            '$dueCount',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
                             .animate()
                             .fadeIn(duration: 500.ms, delay: 100.ms)
                             .slideY(
@@ -111,21 +235,7 @@ class HomeScreen extends ConsumerWidget {
                                 end: 0,
                                 duration: 500.ms,
                                 delay: 100.ms),
-
-                        // Grade buttons (only when flipped)
-                        if (flashcardState.isFlipped &&
-                            flashcardState.currentCard != null) ...[
-                          const SizedBox(height: 12),
-                          GradeButtons(
-                            onGrade: (grade) {
-                              ref
-                                  .read(flashcardNotifierProvider.notifier)
-                                  .gradeCard(grade);
-                            },
-                          ).animate().fadeIn(duration: 300.ms),
-                        ],
-
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 16),
 
                         // Translate section
                         TranslateInput(
@@ -137,12 +247,12 @@ class HomeScreen extends ConsumerWidget {
                           },
                         )
                             .animate()
-                            .fadeIn(duration: 500.ms, delay: 200.ms)
+                            .fadeIn(duration: 500.ms, delay: 150.ms)
                             .slideY(
                                 begin: 0.05,
                                 end: 0,
                                 duration: 500.ms,
-                                delay: 200.ms),
+                                delay: 150.ms),
                         const SizedBox(height: 16),
 
                         // Translation loading shimmer
@@ -196,70 +306,6 @@ class HomeScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildFlashcardHeader(
-      BuildContext context, FlashcardState state, bool isDark) {
-    final count = state.dueCount;
-    return Row(
-      children: [
-        ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [AppColors.accent, AppColors.accentLight],
-          ).createShader(bounds),
-          child: const Text(
-            'Hanly',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ),
-        const Spacer(),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: (isDark ? AppColors.accent : AppColors.accentLightMode)
-                .withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            state.isLoading
-                ? '...'
-                : '$count card${count == 1 ? '' : 's'} due',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: isDark ? AppColors.accentLight : AppColors.accentLightMode,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFlashcardArea(
-      BuildContext context, WidgetRef ref, FlashcardState state) {
-    if (state.isLoading) {
-      return const ShimmerLoader(height: 180, borderRadius: 20);
-    }
-
-    if (state.isEmpty) {
-      return const FlashcardEmptyState();
-    }
-
-    final card = state.currentCard;
-    if (card == null) return const SizedBox.shrink();
-
-    return FlashcardWidget(
-      card: card,
-      isFlipped: state.isFlipped,
-      onTap: () {
-        ref.read(flashcardNotifierProvider.notifier).flipCard();
-      },
     );
   }
 

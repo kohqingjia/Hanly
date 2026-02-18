@@ -7,6 +7,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/providers/supabase_provider.dart';
 import '../../../widgets/glass_card.dart';
 import '../../../widgets/app_toast.dart';
+import '../../../models/profile.dart';
 import '../providers/profile_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -21,7 +22,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isEditingContext = false;
   String? _editLevel;
   List<String> _editPurposes = [];
-  String? _editIndustry;
+  List<String> _editInterests = [];
   final _editContextController = TextEditingController();
   double? _sliderValue;
 
@@ -199,7 +200,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildContextCard(bool isDark, dynamic profile) {
+  Widget _buildContextCard(bool isDark, Profile profile) {
     return GlassCard(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -224,7 +225,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     if (_isEditingContext) {
                       _editLevel = profile.chineseLevel;
                       _editPurposes = List<String>.from(profile.learningPurposes);
-                      _editIndustry = profile.industry;
+                      _editInterests = List<String>.from(profile.interests);
                       _editContextController.text =
                           profile.additionalContext ?? '';
                     }
@@ -252,14 +253,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: (profile.learningPurposes as List<String>)
+                children: profile.learningPurposes
                     .map((p) => _buildPill(isDark, p))
                     .toList(),
               ),
             ],
-            if (profile.industry != null) ...[
+            if (profile.interests.isNotEmpty) ...[
               const SizedBox(height: 8),
-              _buildInfoRow(isDark, 'Industry', profile.industry!),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: profile.interests
+                    .map((i) => _buildPill(isDark, i))
+                    .toList(),
+              ),
             ],
             if (profile.contextSummary != null) ...[
               const SizedBox(height: 12),
@@ -389,7 +396,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   .regenerateContext(
                     chineseLevel: _editLevel ?? 'Beginner',
                     learningPurposes: _editPurposes,
-                    industry: _editIndustry,
+                    interests: _editInterests,
                     additionalContext: _editContextController.text.isEmpty
                         ? null
                         : _editContextController.text,
@@ -409,9 +416,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildPreferencesCard(bool isDark, dynamic profile) {
+  Widget _buildPreferencesCard(bool isDark, Profile profile) {
     final themeMode = ref.watch(themeModeProvider);
-    final displayGoal = _sliderValue?.round() ?? profile.dailyWordGoal as int;
+    final displayGoal = _sliderValue?.round() ?? profile.dailyWordGoal;
 
     return GlassCard(
       padding: const EdgeInsets.all(20),
@@ -480,7 +487,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ],
           ),
           Slider(
-            value: _sliderValue ?? (profile.dailyWordGoal as int).toDouble(),
+            value: _sliderValue ?? profile.dailyWordGoal.toDouble(),
             min: 5,
             max: 50,
             divisions: 9,
