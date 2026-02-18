@@ -494,6 +494,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   // Step 3: Sector / Interests (multi-select, shown to everyone)
   Widget _buildInterestsStep(OnboardingState state, bool isDark) {
     const interests = [
+      'Conversational',
+      'Casual Speaking',
+      'Daily Life',
+      'Social & Networking',
+      'Family & Relationships',
       'Technology',
       'Finance',
       'Healthcare',

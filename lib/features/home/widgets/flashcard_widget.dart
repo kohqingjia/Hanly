@@ -70,91 +70,125 @@ class FlashcardWidget extends StatelessWidget {
     final hasPinyin =
         card.word.pinyin != null && card.word.pinyin!.isNotEmpty;
 
-    return Column(
+    return SingleChildScrollView(
       key: const ValueKey('back'),
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        if (segments.isNotEmpty)
-          RubyText(
-            segments: segments,
-            charSize: 32,
-            pinyinSize: 12,
-          )
-        else ...[
-          if (hasPinyin)
-            Text(
-              card.word.pinyin!,
-              style: TextStyle(
-                fontSize: 14,
-                color: isDark ? AppColors.accent : AppColors.accentLightMode,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Chinese characters with pinyin
+          if (segments.isNotEmpty) ...[
+            // RubyText already shows pinyin above characters, no need for separate line
+            Center(
+              child: RubyText(
+                segments: segments,
+                charSize: 32,
+                pinyinSize: 12,
               ),
             ),
-          if (hasPinyin) const SizedBox(height: 4),
-          Text(
-            card.word.chinese,
-            style: const TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-        if (card.word.meaning != null &&
-            card.word.meaning!.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text(
-            card.word.meaning!,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: isDark ? AppColors.foreground : AppColors.foregroundLight,
-              height: 1.5,
-            ),
-          ),
-        ],
-        if (card.word.examples.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : Colors.black.withValues(alpha: 0.03),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (card.word.examples.first.segments.isNotEmpty)
-                  RubyText(
-                    segments: card.word.examples.first.segments,
-                    charSize: 14,
-                    pinyinSize: 9,
-                  )
-                else
-                  Text(
-                    card.word.examples.first.zh,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isDark
-                          ? AppColors.foreground
-                          : AppColors.foregroundLight,
-                    ),
-                  ),
-                const SizedBox(height: 4),
-                Text(
-                  card.word.examples.first.en,
+          ] else ...[
+            // No segments — show pinyin as plain text + plain Chinese
+            if (hasPinyin)
+              Center(
+                child: Text(
+                  card.word.pinyin!,
                   style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? AppColors.muted : AppColors.mutedLight,
+                    fontSize: 14,
+                    color:
+                        isDark ? AppColors.accent : AppColors.accentLightMode,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              ],
+              ),
+            if (hasPinyin) const SizedBox(height: 4),
+            Center(
+              child: Text(
+                card.word.chinese,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w500,
+                  color: isDark
+                      ? AppColors.foreground
+                      : AppColors.foregroundLight,
+                ),
+              ),
             ),
-          ),
+          ],
+
+          // Meaning
+          if (card.word.meaning != null &&
+              card.word.meaning!.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Text(
+              'MEANING',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppColors.muted : AppColors.mutedLight,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              card.word.meaning!,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? AppColors.foreground : AppColors.foregroundLight,
+                height: 1.5,
+              ),
+            ),
+          ],
+
+          // Example sentence
+          if (card.word.examples.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.black.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.04),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (card.word.examples.first.segments.isNotEmpty)
+                    RubyText(
+                      segments: card.word.examples.first.segments,
+                      charSize: 14,
+                      pinyinSize: 9,
+                    )
+                  else
+                    Text(
+                      card.word.examples.first.zh,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDark
+                            ? AppColors.foreground
+                            : AppColors.foregroundLight,
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    card.word.examples.first.en,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? AppColors.muted : AppColors.mutedLight,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

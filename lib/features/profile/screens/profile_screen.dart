@@ -298,6 +298,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       'School', 'Work', 'Career Advancement', 'Travel',
       'Relocation', 'Heritage', 'Hobby', 'Exam Prep', 'General',
     ];
+    const interests = [
+      'Conversational', 'Casual Speaking', 'Daily Life',
+      'Social & Networking', 'Family & Relationships',
+      'Technology', 'Finance', 'Healthcare', 'Legal', 'Education',
+      'Marketing', 'Hospitality', 'Manufacturing', 'Real Estate',
+      'Media', 'Government', 'Retail', 'Food & Dining',
+      'Sports & Fitness', 'Music & Arts', 'Travel & Tourism',
+      'Gaming', 'Science', 'Fashion', 'Environment', 'Culture & History',
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,6 +377,45 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
                 child: Text(purpose, style: TextStyle(fontSize: 12,
+                    color: isDark ? AppColors.foreground : AppColors.foregroundLight)),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+        Text('Interests', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+            color: isDark ? AppColors.muted : AppColors.mutedLight)),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: interests.map((interest) {
+            final isSelected = _editInterests.contains(interest);
+            return GestureDetector(
+              onTap: () => setState(() {
+                if (isSelected) {
+                  _editInterests.remove(interest);
+                } else {
+                  _editInterests.add(interest);
+                }
+              }),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? (isDark ? AppColors.accent : AppColors.accentLightMode)
+                          .withValues(alpha: 0.2)
+                      : isDark
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : Colors.black.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: isSelected
+                        ? (isDark ? AppColors.accent : AppColors.accentLightMode)
+                        : Colors.transparent,
+                  ),
+                ),
+                child: Text(interest, style: TextStyle(fontSize: 12,
                     color: isDark ? AppColors.foreground : AppColors.foregroundLight)),
               ),
             );

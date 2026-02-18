@@ -35,7 +35,7 @@ CREATE TABLE profiles (
   context_tags text[] DEFAULT '{}',
   onboarding_completed boolean NOT NULL DEFAULT false,
   daily_word_goal int DEFAULT 20,
-  theme_preference text DEFAULT 'dark',
+  theme_preference text DEFAULT 'light',
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );

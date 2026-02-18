@@ -158,15 +158,12 @@ class FlashcardScreen extends ConsumerWidget {
     final card = state.currentCard;
     if (card == null) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: 280,
-      child: FlashcardWidget(
-        card: card,
-        isFlipped: state.isFlipped,
-        onTap: () {
-          ref.read(flashcardNotifierProvider.notifier).flipCard();
-        },
-      ),
+    return FlashcardWidget(
+      card: card,
+      isFlipped: state.isFlipped,
+      onTap: () {
+        ref.read(flashcardNotifierProvider.notifier).flipCard();
+      },
     ).animate().fadeIn(duration: 400.ms);
   }
 }

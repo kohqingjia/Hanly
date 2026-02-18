@@ -26,7 +26,7 @@ class Profile {
     this.contextTags = const [],
     this.onboardingCompleted = false,
     this.dailyWordGoal = 20,
-    this.themePreference = 'dark',
+    this.themePreference = 'light',
     required this.createdAt,
     this.updatedAt,
   });
@@ -52,7 +52,7 @@ class Profile {
             [],
         onboardingCompleted: json['onboarding_completed'] as bool? ?? false,
         dailyWordGoal: json['daily_word_goal'] as int? ?? 20,
-        themePreference: json['theme_preference'] as String? ?? 'dark',
+        themePreference: json['theme_preference'] as String? ?? 'light',
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: json['updated_at'] != null
             ? DateTime.parse(json['updated_at'] as String)

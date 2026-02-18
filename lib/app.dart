@@ -13,10 +13,10 @@ class HanlyApp extends ConsumerWidget {
     final router = ref.watch(goRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
 
-    // Sync theme from profile when it loads
+    // Sync theme from profile when it loads (only after onboarding is complete)
     ref.listen(profileProvider, (prev, next) {
       next.whenData((profile) {
-        if (profile != null) {
+        if (profile != null && profile.onboardingCompleted) {
           ref
               .read(themeModeProvider.notifier)
               .setFromProfile(profile.themePreference);
