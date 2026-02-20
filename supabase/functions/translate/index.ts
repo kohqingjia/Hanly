@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       if (user_context_tags?.length) {
         contextClause += `\nUser focus areas: ${user_context_tags.join(', ')}`;
       }
-      contextClause += `\nTailor the translation, example, and meaning to this user's context and level.`;
+      contextClause += `\nTailor the translation, example, and meaning to this user's professional context.`;
     }
 
     const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY") });
@@ -62,12 +62,12 @@ Deno.serve(async (req) => {
       messages: [
         {
           role: "system",
-          content: `You are a Chinese-English dictionary. Return ONLY valid JSON.${contextClause}
+          content: `You are a Chinese-English dictionary specialized in technical and business vocabulary used in Chinese tech companies. Return ONLY valid JSON.${contextClause}
 
 The user inputs a word or phrase in any format (English, Chinese, pinyin, misspelled, mixed). Infer the intended word and return the best match.
 
 Here is an example of the EXACT output format for "data":
-{"english":"data","chinese":"数据","pinyin":"shù jù","meaning":null,"examples":[{"zh":"我们需要分析这些数据。","en":"We need to analyze this data.","segments":[{"char":"我们","py":"wǒ men"},{"char":"需要","py":"xū yào"},{"char":"分析","py":"fēn xī"},{"char":"这些","py":"zhè xiē"},{"char":"数据","py":"shù jù","highlight":true},{"char":"。","py":""}]}],"tags_suggested":["Technology"],"segments":[{"char":"数","py":"shù"},{"char":"据","py":"jù"}]}
+{"english":"data","chinese":"数据","pinyin":"shù jù","meaning":null,"examples":[{"zh":"我们需要分析这些数据。","en":"We need to analyze this data.","segments":[{"char":"我们","py":"wǒ men"},{"char":"需要","py":"xū yào"},{"char":"分析","py":"fēn xī"},{"char":"这些","py":"zhè xiē"},{"char":"数据","py":"shù jù","highlight":true},{"char":"。","py":""}]}],"tags_suggested":["Data & Analytics"],"segments":[{"char":"数","py":"shù"},{"char":"据","py":"jù"}]}
 
 Here is a HIGHLIGHT example for "sales" (销售) — note BOTH characters get highlight:
 {"zh":"销售是公司最重要的部门之一。","en":"Sales is one of the most important departments in the company.","segments":[{"char":"销","py":"xiāo","highlight":true},{"char":"售","py":"shòu","highlight":true},{"char":"是","py":"shì"},{"char":"公司","py":"gōng sī"},{"char":"最","py":"zuì"},{"char":"重要","py":"zhòng yào"},{"char":"的","py":"de"},{"char":"部门","py":"bù mén"},{"char":"之一","py":"zhī yī"},{"char":"。","py":""}]}
@@ -88,13 +88,13 @@ STRICT RULES — violating any rule is an error:
 
 4. "meaning": null BY DEFAULT. Only provide a short definition (max 12 words) for:
    - Idioms/chengyu (e.g. 打铁趁热 → "strike while the iron is hot")
-   - Slang or colloquial expressions
+   - Chinese tech/business slang or jargon (e.g. 复盘 → "post-mortem review; to review and learn from past actions")
    - Abstract or culturally-specific concepts (e.g. 面子 → "social reputation; concept of saving face")
    Set to null for ALL of these: concrete nouns, verbs, adjectives, compound nouns, technical terms where the English translation is self-explanatory.
-   null examples: data, apple, computer, data warehouse, project management, technical skills, machine learning, hospital, beautiful
+   null examples: data, architecture, infrastructure, project management, technical skills, machine learning, cloud computing
 
 5. "examples": Array with exactly 1 object. CRITICAL — each example MUST include:
-   - "zh": Full Chinese sentence
+   - "zh": Full Chinese sentence, preferably in a professional/workplace context
    - "en": English translation
    - "segments": REQUIRED array covering EVERY character in "zh". Each segment has:
      - "char": 1-4 Chinese characters forming one logical word
@@ -103,10 +103,10 @@ STRICT RULES — violating any rule is an error:
      Punctuation (。，！？、；：) gets its own segment with "py": ""
      Concatenation of all "char" values MUST exactly equal the "zh" string. No characters may be skipped.
 
-6. "tags_suggested": 1-2 tags from ONLY this list: Conversational, Casual Speaking, Daily Life, Social & Networking, Family & Relationships, Technology, Finance, Healthcare, Legal, Education, Marketing, Hospitality, Manufacturing, Real Estate, Media, Government, Retail, Food & Dining, Sports & Fitness, Music & Arts, Travel & Tourism, Gaming, Science, Fashion, Environment, Culture & History
+6. "tags_suggested": 1-2 tags from ONLY this list: Software Engineering, Data & Analytics, Cloud & Infrastructure, Machine Learning, Product Management, Business Strategy, Marketing, Finance, Operations, Design & UX, Cybersecurity, E-commerce, DevOps, Meetings & Communication, Project Management, General Business
    NEVER use tags outside this list.
-   Choose the MOST SPECIFIC and RELEVANT tag for each word. General/common words should use "Daily Life" or "Conversational". Only use niche tags like "Manufacturing" or "Media" if the word is truly domain-specific to that field.
-   Examples: 项目(project)→["Daily Life"], 团队(team)→["Social & Networking"], 销售(sales)→["Retail"], 医生(doctor)→["Healthcare"], 电脑(computer)→["Technology"]
+   Choose the MOST SPECIFIC and RELEVANT tag for each word. General/common business words should use "General Business". Only use niche tags if the word is truly domain-specific.
+   Examples: 架构(architecture)→["Software Engineering"], 数据(data)→["Data & Analytics"], 销售(sales)→["General Business"], 部署(deployment)→["DevOps"], 迭代(iteration)→["Product Management"]
 
 7. "segments": Array for the main word. One object per Chinese character, each with "char" (single character) and "py" (one pinyin syllable with tone mark).`,
         },

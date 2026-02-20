@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import '../providers/supabase_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/splash_screen.dart';
 import '../../features/home/screens/flashcard_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
@@ -12,46 +12,58 @@ import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/providers/profile_provider.dart';
 import '../../widgets/adaptive_nav.dart';
 
+/// Notifies GoRouter to re-evaluate redirects when auth or profile state changes.
+/// Using ref.listen (not ref.watch) ensures the GoRouter is created only once.
+class _RouterNotifier extends ChangeNotifier {
+  _RouterNotifier(Ref ref) {
+    ref.listen(authStateProvider, (_, __) => notifyListeners());
+    ref.listen(profileProvider, (_, __) => notifyListeners());
+  }
+}
+
 final goRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
-  final profile = ref.watch(profileProvider);
+  final notifier = _RouterNotifier(ref);
 
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/',
-    refreshListenable: _GoRouterRefreshStream(
-      Supabase.instance.client.auth.onAuthStateChange,
-    ),
+    refreshListenable: notifier,
     redirect: (context, state) {
-      final isLoggedIn = authState.whenOrNull(
-            data: (s) => s.session != null,
-          ) ??
-          false;
-      final isOnLogin = state.matchedLocation == '/login';
-      final isOnOnboarding = state.matchedLocation == '/onboarding';
+      final authAsync = ref.read(authStateProvider);
+      final profileAsync = ref.read(profileProvider);
 
-      if (!isLoggedIn && !isOnLogin) return '/login';
-      if (isLoggedIn && isOnLogin) {
-        final profileData = profile.whenOrNull(data: (p) => p);
-        if (profileData != null && !profileData.onboardingCompleted) {
-          return '/onboarding';
-        }
+      final isLoggedIn =
+          authAsync.whenOrNull(data: (s) => s.session != null) ?? false;
+      final isProfileLoading = profileAsync.isLoading;
+      final profileData = profileAsync.whenOrNull(data: (p) => p);
+
+      final loc = state.matchedLocation;
+      final isOnLogin = loc == '/login';
+      final isOnSplash = loc == '/splash';
+      final isOnOnboarding = loc == '/onboarding';
+
+      // Not logged in → login
+      if (!isLoggedIn) {
+        return isOnLogin ? null : '/login';
+      }
+
+      // Logged in, profile still loading:
+      // Move off login immediately (we know the user is authenticated),
+      // but wait on splash until profile resolves.
+      if (isProfileLoading) {
+        if (isOnLogin) return '/splash';
+        return null; // Stay on splash (or wherever we are) — no further redirect
+      }
+
+      // Profile has loaded — decide destination
+      final onboardingComplete = profileData?.onboardingCompleted ?? false;
+
+      if (!onboardingComplete) {
+        return isOnOnboarding ? null : '/onboarding';
+      }
+
+      // Onboarding complete — move off transient screens to home
+      if (isOnLogin || isOnSplash || isOnOnboarding) {
         return '/';
-      }
-
-      // Logged in, check onboarding
-      if (isLoggedIn && !isOnOnboarding) {
-        final profileData = profile.whenOrNull(data: (p) => p);
-        if (profileData != null && !profileData.onboardingCompleted) {
-          return '/onboarding';
-        }
-      }
-
-      // Completed onboarding but still on onboarding page
-      if (isLoggedIn && isOnOnboarding) {
-        final profileData = profile.whenOrNull(data: (p) => p);
-        if (profileData != null && profileData.onboardingCompleted) {
-          return '/';
-        }
       }
 
       return null;
@@ -60,6 +72,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(
         path: '/onboarding',
@@ -96,19 +112,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  ref.onDispose(() {
+    notifier.dispose();
+    router.dispose();
+  });
+
+  return router;
 });
-
-/// Converts a Stream into a Listenable for GoRouter's refreshListenable.
-class _GoRouterRefreshStream extends ChangeNotifier {
-  _GoRouterRefreshStream(Stream<dynamic> stream) {
-    _subscription = stream.listen((_) => notifyListeners());
-  }
-
-  late final dynamic _subscription;
-
-  @override
-  void dispose() {
-    _subscription.cancel();
-    super.dispose();
-  }
-}

@@ -38,9 +38,7 @@ class ProfileUpdateNotifier extends StateNotifier<AsyncValue<void>> {
   }
 
   Future<Map<String, dynamic>?> regenerateContext({
-    required String chineseLevel,
-    required List<String> learningPurposes,
-    List<String> interests = const [],
+    required List<String> focusAreas,
     String? additionalContext,
   }) async {
     if (_user == null) return null;
@@ -49,9 +47,7 @@ class ProfileUpdateNotifier extends StateNotifier<AsyncValue<void>> {
       final response = await _client.functions.invoke(
         'generate-context',
         body: {
-          'chinese_level': chineseLevel,
-          'learning_purposes': learningPurposes,
-          'interests': interests,
+          'focus_areas': focusAreas,
           'additional_context': additionalContext,
         },
       );
@@ -66,9 +62,7 @@ class ProfileUpdateNotifier extends StateNotifier<AsyncValue<void>> {
           : rawData as Map<String, dynamic>;
 
       await _client.from('profiles').update({
-        'chinese_level': chineseLevel,
-        'learning_purposes': learningPurposes,
-        'interests': interests,
+        'focus_areas': focusAreas,
         'additional_context': additionalContext,
         'context_summary': data['context_summary'],
         'context_tags': data['context_tags'],
@@ -83,13 +77,6 @@ class ProfileUpdateNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  Future<void> updateTheme(String theme) async {
-    if (_user == null) return;
-    await _client.from('profiles').update({
-      'theme_preference': theme,
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }).eq('id', _user.id);
-  }
 }
 
 final profileUpdateProvider =

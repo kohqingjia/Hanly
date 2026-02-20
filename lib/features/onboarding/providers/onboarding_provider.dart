@@ -6,12 +6,9 @@ import '../../../core/providers/supabase_provider.dart';
 class OnboardingState {
   final int currentStep;
   final String? displayName;
-  final String? chineseLevel;
-  final List<String> learningPurposes;
-  final List<String> interests;
-  final String? additionalContext;
   final String? ageRange;
-  final int dailyWordGoal;
+  final List<String> focusAreas;
+  final String? additionalContext;
   final bool isSubmitting;
   final String? error;
   // Suggested words
@@ -19,38 +16,37 @@ class OnboardingState {
   final Set<int> selectedWordIndices;
   final bool isLoadingSuggestions;
   final bool isSavingWords;
+  // Word generation progress (batch-based)
+  final int wordGenerationProgress; // batches completed (0..totalWordBatches)
+  final int totalWordBatches;
 
   const OnboardingState({
     this.currentStep = 0,
     this.displayName,
-    this.chineseLevel,
-    this.learningPurposes = const [],
-    this.interests = const [],
-    this.additionalContext,
     this.ageRange,
-    this.dailyWordGoal = 20,
+    this.focusAreas = const [],
+    this.additionalContext,
     this.isSubmitting = false,
     this.error,
     this.suggestedWords = const [],
     this.selectedWordIndices = const {},
     this.isLoadingSuggestions = false,
     this.isSavingWords = false,
+    this.wordGenerationProgress = 0,
+    this.totalWordBatches = 3,
   });
 
-  // Steps: 0=Name, 1=Level, 2=Purposes, 3=Interests, 4=Preferences, 5=Suggestions
-  int get totalSteps => 6;
-  int get suggestionsStep => 5;
-  int get preferencesStep => 4;
+  // Steps: 0=Name+Age, 1=Focus Areas, 2=Additional Context, 3=Suggestions
+  int get totalSteps => 4;
+  int get suggestionsStep => 3;
+  int get contextStep => 2;
 
   OnboardingState copyWith({
     int? currentStep,
     String? displayName,
-    String? chineseLevel,
-    List<String>? learningPurposes,
-    List<String>? interests,
-    String? additionalContext,
     String? ageRange,
-    int? dailyWordGoal,
+    List<String>? focusAreas,
+    String? additionalContext,
     bool? isSubmitting,
     String? error,
     bool clearError = false,
@@ -60,18 +56,17 @@ class OnboardingState {
     Set<int>? selectedWordIndices,
     bool? isLoadingSuggestions,
     bool? isSavingWords,
+    int? wordGenerationProgress,
+    int? totalWordBatches,
   }) {
     return OnboardingState(
       currentStep: currentStep ?? this.currentStep,
       displayName: displayName ?? this.displayName,
-      chineseLevel: chineseLevel ?? this.chineseLevel,
-      learningPurposes: learningPurposes ?? this.learningPurposes,
-      interests: interests ?? this.interests,
+      ageRange: clearAgeRange ? null : (ageRange ?? this.ageRange),
+      focusAreas: focusAreas ?? this.focusAreas,
       additionalContext: clearAdditionalContext
           ? null
           : (additionalContext ?? this.additionalContext),
-      ageRange: clearAgeRange ? null : (ageRange ?? this.ageRange),
-      dailyWordGoal: dailyWordGoal ?? this.dailyWordGoal,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       error: clearError ? null : (error ?? this.error),
       suggestedWords: suggestedWords ?? this.suggestedWords,
@@ -79,6 +74,9 @@ class OnboardingState {
       isLoadingSuggestions:
           isLoadingSuggestions ?? this.isLoadingSuggestions,
       isSavingWords: isSavingWords ?? this.isSavingWords,
+      wordGenerationProgress:
+          wordGenerationProgress ?? this.wordGenerationProgress,
+      totalWordBatches: totalWordBatches ?? this.totalWordBatches,
     );
   }
 }
@@ -86,43 +84,13 @@ class OnboardingState {
 class OnboardingNotifier extends StateNotifier<OnboardingState> {
   final SupabaseClient _client;
   final User? _user;
+  bool _generationCancelled = false;
 
   OnboardingNotifier(this._client, this._user)
       : super(const OnboardingState());
 
   void setDisplayName(String? name) {
     state = state.copyWith(displayName: name);
-  }
-
-  void setChineseLevel(String level) {
-    state = state.copyWith(chineseLevel: level);
-  }
-
-  void togglePurpose(String purpose) {
-    final purposes = List<String>.from(state.learningPurposes);
-    if (purposes.contains(purpose)) {
-      purposes.remove(purpose);
-    } else {
-      purposes.add(purpose);
-    }
-    state = state.copyWith(learningPurposes: purposes);
-  }
-
-  void toggleInterest(String interest) {
-    final interests = List<String>.from(state.interests);
-    if (interests.contains(interest)) {
-      interests.remove(interest);
-    } else {
-      interests.add(interest);
-    }
-    state = state.copyWith(interests: interests);
-  }
-
-  void setAdditionalContext(String? text) {
-    state = state.copyWith(
-      additionalContext: text,
-      clearAdditionalContext: text == null,
-    );
   }
 
   void setAgeRange(String? range) {
@@ -132,8 +100,21 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     );
   }
 
-  void setDailyWordGoal(int goal) {
-    state = state.copyWith(dailyWordGoal: goal);
+  void toggleFocusArea(String area) {
+    final areas = List<String>.from(state.focusAreas);
+    if (areas.contains(area)) {
+      areas.remove(area);
+    } else {
+      areas.add(area);
+    }
+    state = state.copyWith(focusAreas: areas);
+  }
+
+  void setAdditionalContext(String? text) {
+    state = state.copyWith(
+      additionalContext: text,
+      clearAdditionalContext: text == null,
+    );
   }
 
   void nextStep() {
@@ -165,9 +146,10 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     state = state.copyWith(selectedWordIndices: {});
   }
 
-  /// Submit profile data, generate context, fetch suggestions, advance to suggestions step.
+  /// Submit profile data, generate context, fetch suggestions in iterative batches.
   Future<bool> submitAndFetchSuggestions() async {
     if (_user == null) return false;
+    _generationCancelled = false;
     state = state.copyWith(isSubmitting: true, clearError: true);
 
     try {
@@ -175,9 +157,7 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
       final response = await _client.functions.invoke(
         'generate-context',
         body: {
-          'chinese_level': state.chineseLevel,
-          'learning_purposes': state.learningPurposes,
-          'interests': state.interests,
+          'focus_areas': state.focusAreas,
           'additional_context': state.additionalContext,
         },
       );
@@ -200,52 +180,76 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
       // Step 2: Save profile (but keep onboarding_completed = false)
       await _client.from('profiles').update({
         'display_name': state.displayName,
-        'age_range': state.ageRange,
-        'chinese_level': state.chineseLevel,
-        'learning_purposes': state.learningPurposes,
-        'interests': state.interests,
+        'focus_areas': state.focusAreas,
         'additional_context': state.additionalContext,
-        'daily_word_goal': state.dailyWordGoal,
         'context_summary': contextSummary,
         'context_tags': contextTags,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', _user.id);
 
       // Step 3: Advance to suggestions step and start loading
+      const int batchSize = 4;
+      const int totalBatches = 3;
       state = state.copyWith(
         isSubmitting: false,
         currentStep: state.suggestionsStep,
         isLoadingSuggestions: true,
+        wordGenerationProgress: 0,
+        totalWordBatches: totalBatches,
+        suggestedWords: [],
+        selectedWordIndices: {},
       );
 
-      // Step 4: Fetch suggested words
-      final suggestResponse = await _client.functions.invoke(
-        'suggest-words',
-        body: {
-          'context_summary': contextSummary,
-          'context_tags': contextTags,
-          'chinese_level': state.chineseLevel,
-        },
-      );
+      // Step 4: Fetch words in iterative batches
+      final List<Map<String, dynamic>> allWords = [];
 
-      if (suggestResponse.status == 200) {
-        final rawData = suggestResponse.data;
-        final Map<String, dynamic> data = rawData is String
-            ? jsonDecode(rawData) as Map<String, dynamic>
-            : rawData as Map<String, dynamic>;
-        final words = (data['words'] as List<dynamic>?)
-                ?.map((e) => e as Map<String, dynamic>)
-                .toList() ??
-            [];
+      for (int batch = 0; batch < totalBatches; batch++) {
+        if (_generationCancelled) break;
 
-        // Select all by default
-        final allIndices = List.generate(words.length, (i) => i).toSet();
-        state = state.copyWith(
-          suggestedWords: words,
-          selectedWordIndices: allIndices,
-          isLoadingSuggestions: false,
+        final existingWordIdentifiers = allWords
+            .map((w) => {
+                  'english': w['english'],
+                  'chinese': w['chinese'],
+                })
+            .toList();
+
+        final suggestResponse = await _client.functions.invoke(
+          'suggest-words',
+          body: {
+            'context_summary': contextSummary,
+            'context_tags': contextTags,
+            'count': batchSize,
+            'existing_words': existingWordIdentifiers,
+          },
         );
-      } else {
+
+        if (_generationCancelled) break;
+
+        if (suggestResponse.status == 200) {
+          final rawData = suggestResponse.data;
+          final Map<String, dynamic> data = rawData is String
+              ? jsonDecode(rawData) as Map<String, dynamic>
+              : rawData as Map<String, dynamic>;
+          final newWords = (data['words'] as List<dynamic>?)
+                  ?.map((e) => e as Map<String, dynamic>)
+                  .toList() ??
+              [];
+
+          allWords.addAll(newWords);
+          final allIndices =
+              List.generate(allWords.length, (i) => i).toSet();
+
+          state = state.copyWith(
+            suggestedWords: List.from(allWords),
+            selectedWordIndices: allIndices,
+            wordGenerationProgress: batch + 1,
+            isLoadingSuggestions: batch < totalBatches - 1,
+          );
+        }
+      }
+
+      // Ensure loading is cleared if cancelled mid-way
+      if (state.isLoadingSuggestions) {
         state = state.copyWith(isLoadingSuggestions: false);
       }
 
@@ -306,9 +310,10 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     }
   }
 
-  /// Skip suggestions and just complete onboarding.
+  /// Skip suggestions and just complete onboarding. Cancels any ongoing generation.
   Future<bool> skipAndComplete() async {
     if (_user == null) return false;
+    _generationCancelled = true;
     state = state.copyWith(isSavingWords: true, clearError: true);
 
     try {

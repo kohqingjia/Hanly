@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../models/segment.dart';
 import '../../../models/translation_result.dart';
 import '../../../widgets/glass_card.dart';
 import '../../../widgets/ruby_text.dart';
@@ -110,7 +111,10 @@ class TranslationResultCard extends StatelessWidget {
                         // Chinese sentence with pinyin via RubyText
                         if (ex.segments.isNotEmpty)
                           RubyText(
-                            segments: ex.segments,
+                            segments: Segment.withHighlights(
+                              ex.segments,
+                              result.chinese,
+                            ),
                             charSize: 15,
                             pinyinSize: 9,
                           )

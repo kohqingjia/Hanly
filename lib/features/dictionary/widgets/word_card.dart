@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../models/segment.dart';
 import '../../../models/user_word.dart';
 import '../../../widgets/glass_card.dart';
 import '../../../widgets/ruby_text.dart';
@@ -179,7 +180,10 @@ class WordCard extends StatelessWidget {
                 children: [
                   if (word.examples.first.segments.isNotEmpty)
                     RubyText(
-                      segments: word.examples.first.segments,
+                      segments: Segment.withHighlights(
+                        word.examples.first.segments,
+                        word.chinese,
+                      ),
                       charSize: 13,
                       pinyinSize: 8,
                     )

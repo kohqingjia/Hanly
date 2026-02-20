@@ -11,9 +11,26 @@ class Segment {
         highlight: json['highlight'] as bool? ?? false,
       );
 
+  Segment copyWith({bool? highlight}) => Segment(
+        char: char,
+        py: py,
+        highlight: highlight ?? this.highlight,
+      );
+
   Map<String, dynamic> toJson() => {
         'char': char,
         'py': py,
         if (highlight) 'highlight': true,
       };
+
+  /// Returns segments with highlight computed from the vocabulary word's characters.
+  /// A segment is highlighted if any of its characters appear in [vocabChinese].
+  static List<Segment> withHighlights(
+      List<Segment> segments, String vocabChinese) {
+    return segments.map((seg) {
+      final shouldHighlight =
+          seg.char.runes.any((r) => vocabChinese.runes.contains(r));
+      return shouldHighlight ? seg.copyWith(highlight: true) : seg;
+    }).toList();
+  }
 }

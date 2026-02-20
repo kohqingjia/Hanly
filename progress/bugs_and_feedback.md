@@ -1,5 +1,6 @@
-- LLM function is really too slow, especially for onboarding suggestion. need to reduce time taken to generate. 
-- flashcard UI looks abyssmal 
+- LLM function is really too slow, especially for onboarding suggestion. need to reduce time taken to generate.*** when generating words cannot press get started. if press skip then stop the word generation. instead of one prompt maybe can do an iteration of the same prompt? then have progress bar. 
+- flashcard UI for english should be same size as when it flips over. please have consistent styling for the flashcards. it looks great on the chinese side.
+- make transition from light to dark more smooth.
 
 
 future considerations:

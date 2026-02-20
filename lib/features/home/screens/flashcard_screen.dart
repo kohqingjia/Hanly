@@ -107,35 +107,35 @@ class FlashcardScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Main content area
+              // Main content area with grade buttons below card
               Expanded(
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 500),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: _buildContent(context, ref, state, isDark),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildContent(context, ref, state, isDark),
+                          if (state.isFlipped && state.currentCard != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 24),
+                              child: GradeButtons(
+                                onGrade: (grade) {
+                                  ref
+                                      .read(flashcardNotifierProvider.notifier)
+                                      .gradeCard(grade);
+                                },
+                              ),
+                            ).animate().fadeIn(duration: 300.ms),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-
-              // Grade buttons (fixed at bottom)
-              if (state.isFlipped && state.currentCard != null)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 500),
-                    child: GradeButtons(
-                      onGrade: (grade) {
-                        ref
-                            .read(flashcardNotifierProvider.notifier)
-                            .gradeCard(grade);
-                      },
-                    ),
-                  ),
-                ).animate().fadeIn(duration: 300.ms),
 
               const SizedBox(height: 8),
             ],

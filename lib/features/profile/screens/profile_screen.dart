@@ -20,9 +20,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isEditingContext = false;
-  String? _editLevel;
-  List<String> _editPurposes = [];
-  List<String> _editInterests = [];
+  List<String> _editFocusAreas = [];
   final _editContextController = TextEditingController();
   double? _sliderValue;
 
@@ -223,9 +221,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   setState(() {
                     _isEditingContext = !_isEditingContext;
                     if (_isEditingContext) {
-                      _editLevel = profile.chineseLevel;
-                      _editPurposes = List<String>.from(profile.learningPurposes);
-                      _editInterests = List<String>.from(profile.interests);
+                      _editFocusAreas = List<String>.from(profile.focusAreas);
                       _editContextController.text =
                           profile.additionalContext ?? '';
                     }
@@ -246,24 +242,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const SizedBox(height: 12),
           if (!_isEditingContext) ...[
             // Display mode
-            if (profile.chineseLevel != null)
-              _buildInfoRow(isDark, 'Level', profile.chineseLevel!),
-            if (profile.learningPurposes.isNotEmpty) ...[
-              const SizedBox(height: 8),
+            if (profile.focusAreas.isNotEmpty) ...[
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: profile.learningPurposes
-                    .map((p) => _buildPill(isDark, p))
-                    .toList(),
-              ),
-            ],
-            if (profile.interests.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: profile.interests
+                children: profile.focusAreas
                     .map((i) => _buildPill(isDark, i))
                     .toList(),
               ),
@@ -290,74 +273,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildEditContextForm(bool isDark) {
-    const levels = [
-      'Absolute Beginner', 'Beginner', 'Elementary',
-      'Intermediate', 'Upper Intermediate', 'Advanced',
-    ];
-    const purposes = [
-      'School', 'Work', 'Career Advancement', 'Travel',
-      'Relocation', 'Heritage', 'Hobby', 'Exam Prep', 'General',
-    ];
-    const interests = [
-      'Conversational', 'Casual Speaking', 'Daily Life',
-      'Social & Networking', 'Family & Relationships',
-      'Technology', 'Finance', 'Healthcare', 'Legal', 'Education',
-      'Marketing', 'Hospitality', 'Manufacturing', 'Real Estate',
-      'Media', 'Government', 'Retail', 'Food & Dining',
-      'Sports & Fitness', 'Music & Arts', 'Travel & Tourism',
-      'Gaming', 'Science', 'Fashion', 'Environment', 'Culture & History',
+    const focusAreas = [
+      'Data & Analytics', 'Cloud Computing', 'Machine Learning & AI',
+      'Software Engineering', 'Product Management', 'Business & Strategy',
+      'Marketing & Growth', 'Finance & Accounting', 'Operations & Supply Chain',
+      'Design & UX', 'Cybersecurity', 'E-commerce',
+      'Hardware & IoT', 'DevOps & Infrastructure', 'General Tech',
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Level', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+        Text('Focus Areas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
             color: isDark ? AppColors.muted : AppColors.mutedLight)),
         const SizedBox(height: 6),
         Wrap(
           spacing: 6,
           runSpacing: 6,
-          children: levels.map((level) {
-            final isSelected = _editLevel == level;
-            return GestureDetector(
-              onTap: () => setState(() => _editLevel = level),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? (isDark ? AppColors.accent : AppColors.accentLightMode)
-                          .withValues(alpha: 0.2)
-                      : isDark
-                          ? Colors.white.withValues(alpha: 0.05)
-                          : Colors.black.withValues(alpha: 0.04),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: isSelected
-                        ? (isDark ? AppColors.accent : AppColors.accentLightMode)
-                        : Colors.transparent,
-                  ),
-                ),
-                child: Text(level, style: TextStyle(fontSize: 12,
-                    color: isDark ? AppColors.foreground : AppColors.foregroundLight)),
-              ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 16),
-        Text('Purposes', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-            color: isDark ? AppColors.muted : AppColors.mutedLight)),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: purposes.map((purpose) {
-            final isSelected = _editPurposes.contains(purpose);
+          children: focusAreas.map((area) {
+            final isSelected = _editFocusAreas.contains(area);
             return GestureDetector(
               onTap: () => setState(() {
                 if (isSelected) {
-                  _editPurposes.remove(purpose);
+                  _editFocusAreas.remove(area);
                 } else {
-                  _editPurposes.add(purpose);
+                  _editFocusAreas.add(area);
                 }
               }),
               child: Container(
@@ -376,46 +316,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         : Colors.transparent,
                   ),
                 ),
-                child: Text(purpose, style: TextStyle(fontSize: 12,
-                    color: isDark ? AppColors.foreground : AppColors.foregroundLight)),
-              ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 16),
-        Text('Interests', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-            color: isDark ? AppColors.muted : AppColors.mutedLight)),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: interests.map((interest) {
-            final isSelected = _editInterests.contains(interest);
-            return GestureDetector(
-              onTap: () => setState(() {
-                if (isSelected) {
-                  _editInterests.remove(interest);
-                } else {
-                  _editInterests.add(interest);
-                }
-              }),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? (isDark ? AppColors.accent : AppColors.accentLightMode)
-                          .withValues(alpha: 0.2)
-                      : isDark
-                          ? Colors.white.withValues(alpha: 0.05)
-                          : Colors.black.withValues(alpha: 0.04),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: isSelected
-                        ? (isDark ? AppColors.accent : AppColors.accentLightMode)
-                        : Colors.transparent,
-                  ),
-                ),
-                child: Text(interest, style: TextStyle(fontSize: 12,
+                child: Text(area, style: TextStyle(fontSize: 12,
                     color: isDark ? AppColors.foreground : AppColors.foregroundLight)),
               ),
             );
@@ -442,9 +343,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               final result = await ref
                   .read(profileUpdateProvider.notifier)
                   .regenerateContext(
-                    chineseLevel: _editLevel ?? 'Beginner',
-                    learningPurposes: _editPurposes,
-                    interests: _editInterests,
+                    focusAreas: _editFocusAreas,
                     additionalContext: _editContextController.text.isEmpty
                         ? null
                         : _editContextController.text,
@@ -506,10 +405,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     isDark ? AppColors.accent : AppColors.accentLightMode,
                 onChanged: (value) {
                   ref.read(themeModeProvider.notifier).toggle();
-                  final newTheme = value ? 'dark' : 'light';
-                  ref
-                      .read(profileUpdateProvider.notifier)
-                      .updateTheme(newTheme);
                 },
               ),
             ],
@@ -553,38 +448,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildInfoRow(bool isDark, String label, String value) {
-    return Row(
-      children: [
-        Text(
-          '$label: ',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: isDark ? AppColors.muted : AppColors.mutedLight,
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: (isDark ? AppColors.accent : AppColors.accentLightMode)
-                .withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color:
-                  isDark ? AppColors.accentLight : AppColors.accentLightMode,
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -638,12 +501,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         body: {},
                       );
                       if (response.status == 200) {
-                        // User deleted server-side; clear local session only
                         try {
                           await client.auth.signOut();
-                        } catch (_) {
-                          // Expected: server rejects since user is already deleted
-                        }
+                        } catch (_) {}
                       } else if (mounted) {
                         AppToast.show(
                           context,

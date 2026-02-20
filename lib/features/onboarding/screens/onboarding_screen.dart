@@ -128,11 +128,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       controller: _pageController,
                       physics: const NeverScrollableScrollPhysics(),
                       children: [
-                        _buildNameStep(state, isDark),
-                        _buildLevelStep(state, isDark),
-                        _buildPurposesStep(state, isDark),
-                        _buildInterestsStep(state, isDark),
-                        _buildPreferencesStep(state, isDark),
+                        _buildNameAgeStep(state, isDark),
+                        _buildFocusAreasStep(state, isDark),
+                        _buildContextStep(state, isDark),
                         _buildSuggestionsStep(state, isDark),
                       ],
                     ),
@@ -173,8 +171,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ).animate().fadeIn(duration: 400.ms);
   }
 
-  // Step 0: Name
-  Widget _buildNameStep(OnboardingState state, bool isDark) {
+  // Step 0: Name + Age
+  Widget _buildNameAgeStep(OnboardingState state, bool isDark) {
+    const ageRanges = [
+      'Under 18',
+      '18-24',
+      '25-34',
+      '35-44',
+      '45-54',
+      '55+',
+    ];
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: ConstrainedBox(
@@ -199,7 +206,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              "What's your name?",
+              "Let's get to know you",
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 20,
@@ -207,7 +214,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 color: isDark ? AppColors.foreground : AppColors.foregroundLight,
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 32),
+            // Name field
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'YOUR NAME',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.muted : AppColors.mutedLight,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: BackdropFilter(
@@ -244,513 +265,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ),
               ),
             ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0, duration: 400.ms),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Step 1: Chinese Level
-  Widget _buildLevelStep(OnboardingState state, bool isDark) {
-    const levels = [
-      'Absolute Beginner',
-      'Beginner',
-      'Elementary',
-      'Intermediate',
-      'Upper Intermediate',
-      'Advanced',
-    ];
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
             const SizedBox(height: 24),
-            Text(
-              "What's your Chinese level?",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.foreground : AppColors.foregroundLight,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "We'll personalize your experience",
-              style: TextStyle(
-                fontSize: 14,
-                color: isDark ? AppColors.muted : AppColors.mutedLight,
-              ),
-            ),
-            const SizedBox(height: 32),
-            ...levels.asMap().entries.map((entry) {
-              final level = entry.value;
-              final isSelected = state.chineseLevel == level;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: GestureDetector(
-                  onTap: () {
-                    ref.read(onboardingProvider.notifier).setChineseLevel(level);
-                  },
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 16),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? (isDark
-                                      ? AppColors.accent
-                                      : AppColors.accentLightMode)
-                                  .withValues(alpha: 0.2)
-                              : isDark
-                                  ? Colors.white.withValues(alpha: 0.05)
-                                  : Colors.white.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: isSelected
-                                ? (isDark
-                                    ? AppColors.accent
-                                    : AppColors.accentLightMode)
-                                : isDark
-                                    ? Colors.white.withValues(alpha: 0.08)
-                                    : Colors.black.withValues(alpha: 0.06),
-                            width: isSelected ? 1.5 : 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                level,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                  color: isSelected
-                                      ? (isDark
-                                          ? AppColors.accentLight
-                                          : AppColors.accentLightMode)
-                                      : (isDark
-                                          ? AppColors.foreground
-                                          : AppColors.foregroundLight),
-                                ),
-                              ),
-                            ),
-                            if (isSelected)
-                              Icon(
-                                LucideIcons.check,
-                                size: 18,
-                                color: isDark
-                                    ? AppColors.accent
-                                    : AppColors.accentLightMode,
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              )
-                  .animate()
-                  .fadeIn(
-                      duration: 400.ms,
-                      delay: Duration(milliseconds: 50 * entry.key))
-                  .slideX(
-                      begin: 0.05,
-                      end: 0,
-                      duration: 400.ms,
-                      delay: Duration(milliseconds: 50 * entry.key));
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Step 2: Learning Purposes
-  Widget _buildPurposesStep(OnboardingState state, bool isDark) {
-    const purposes = [
-      'School',
-      'Work',
-      'Career Advancement',
-      'Travel',
-      'Relocation',
-      'Heritage',
-      'Hobby',
-      'Exam Prep',
-      'General',
-    ];
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 24),
-            Text(
-              'Why are you learning Chinese?',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.foreground : AppColors.foregroundLight,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Select all that apply',
-              style: TextStyle(
-                fontSize: 14,
-                color: isDark ? AppColors.muted : AppColors.mutedLight,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              alignment: WrapAlignment.center,
-              children: purposes.asMap().entries.map((entry) {
-                final purpose = entry.value;
-                final isSelected = state.learningPurposes.contains(purpose);
-                return GestureDetector(
-                  onTap: () {
-                    ref
-                        .read(onboardingProvider.notifier)
-                        .togglePurpose(purpose);
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? (isDark
-                                  ? AppColors.accent
-                                  : AppColors.accentLightMode)
-                              .withValues(alpha: 0.2)
-                          : isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.white.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: isSelected
-                            ? (isDark
-                                ? AppColors.accent
-                                : AppColors.accentLightMode)
-                            : isDark
-                                ? Colors.white.withValues(alpha: 0.08)
-                                : Colors.black.withValues(alpha: 0.06),
-                        width: isSelected ? 1.5 : 1,
-                      ),
-                    ),
-                    child: Text(
-                      purpose,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.w400,
-                        color: isSelected
-                            ? (isDark
-                                ? AppColors.accentLight
-                                : AppColors.accentLightMode)
-                            : (isDark
-                                ? AppColors.foreground
-                                : AppColors.foregroundLight),
-                      ),
-                    ),
-                  ),
-                )
-                    .animate()
-                    .fadeIn(
-                        duration: 300.ms,
-                        delay: Duration(milliseconds: 30 * entry.key))
-                    .scale(
-                        begin: const Offset(0.9, 0.9),
-                        end: const Offset(1, 1),
-                        duration: 300.ms,
-                        delay: Duration(milliseconds: 30 * entry.key));
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Step 3: Sector / Interests (multi-select, shown to everyone)
-  Widget _buildInterestsStep(OnboardingState state, bool isDark) {
-    const interests = [
-      'Conversational',
-      'Casual Speaking',
-      'Daily Life',
-      'Social & Networking',
-      'Family & Relationships',
-      'Technology',
-      'Finance',
-      'Healthcare',
-      'Legal',
-      'Education',
-      'Marketing',
-      'Hospitality',
-      'Manufacturing',
-      'Real Estate',
-      'Media',
-      'Government',
-      'Retail',
-      'Food & Dining',
-      'Sports & Fitness',
-      'Music & Arts',
-      'Travel & Tourism',
-      'Gaming',
-      'Science',
-      'Fashion',
-      'Environment',
-      'Culture & History',
-    ];
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 24),
-            Text(
-              "What are you interested in?",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.foreground : AppColors.foregroundLight,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Select all that apply — we'll tailor your vocabulary",
-              style: TextStyle(
-                fontSize: 14,
-                color: isDark ? AppColors.muted : AppColors.mutedLight,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: interests.asMap().entries.map((entry) {
-                final interest = entry.value;
-                final isSelected = state.interests.contains(interest);
-                return GestureDetector(
-                  onTap: () {
-                    ref
-                        .read(onboardingProvider.notifier)
-                        .toggleInterest(interest);
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? (isDark
-                                  ? AppColors.accent
-                                  : AppColors.accentLightMode)
-                              .withValues(alpha: 0.2)
-                          : isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.white.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: isSelected
-                            ? (isDark
-                                ? AppColors.accent
-                                : AppColors.accentLightMode)
-                            : isDark
-                                ? Colors.white.withValues(alpha: 0.08)
-                                : Colors.black.withValues(alpha: 0.06),
-                        width: isSelected ? 1.5 : 1,
-                      ),
-                    ),
-                    child: Text(
-                      interest,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.w400,
-                        color: isSelected
-                            ? (isDark
-                                ? AppColors.accentLight
-                                : AppColors.accentLightMode)
-                            : (isDark
-                                ? AppColors.foreground
-                                : AppColors.foregroundLight),
-                      ),
-                    ),
-                  ),
-                )
-                    .animate()
-                    .fadeIn(
-                        duration: 300.ms,
-                        delay: Duration(milliseconds: 20 * entry.key))
-                    .scale(
-                        begin: const Offset(0.9, 0.9),
-                        end: const Offset(1, 1),
-                        duration: 300.ms,
-                        delay: Duration(milliseconds: 20 * entry.key));
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Step 4: Context + Age Range + Daily Goal
-  Widget _buildPreferencesStep(OnboardingState state, bool isDark) {
-    const ageRanges = [
-      'Under 18',
-      '18-24',
-      '25-34',
-      '35-44',
-      '45-54',
-      '55+',
-    ];
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 24),
-            Center(
-              child: Text(
-                'Almost done!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                  color:
-                      isDark ? AppColors.foreground : AppColors.foregroundLight,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Center(
-              child: Text(
-                'Set your preferences',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? AppColors.muted : AppColors.mutedLight,
-                ),
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // Daily Word Goal
-            Text(
-              'DAILY WORD GOAL',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.muted : AppColors.mutedLight,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: GlassDecoration.card(context),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Icon(LucideIcons.target,
-                              size: 18,
-                              color: isDark
-                                  ? AppColors.accent
-                                  : AppColors.accentLightMode),
-                          const SizedBox(width: 10),
-                          Text(
-                            '${state.dailyWordGoal} words per day',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: isDark
-                                  ? AppColors.foreground
-                                  : AppColors.foregroundLight,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Slider(
-                        value: state.dailyWordGoal.toDouble(),
-                        min: 5,
-                        max: 50,
-                        divisions: 9,
-                        activeColor: isDark
-                            ? AppColors.accent
-                            : AppColors.accentLightMode,
-                        onChanged: (value) {
-                          ref
-                              .read(onboardingProvider.notifier)
-                              .setDailyWordGoal(value.round());
-                        },
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('5',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: isDark
-                                      ? AppColors.muted
-                                      : AppColors.mutedLight)),
-                          Text('50',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: isDark
-                                      ? AppColors.muted
-                                      : AppColors.mutedLight)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
             // Age Range (optional)
-            Text(
-              'AGE RANGE (OPTIONAL)',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.muted : AppColors.mutedLight,
-                letterSpacing: 1.2,
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'AGE RANGE (OPTIONAL)',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.muted : AppColors.mutedLight,
+                  letterSpacing: 1.2,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -808,10 +334,169 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                 );
               }).toList(),
+            ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Step 1: Focus Areas
+  Widget _buildFocusAreasStep(OnboardingState state, bool isDark) {
+    const focusAreas = [
+      'Data & Analytics',
+      'Data Engineering',
+      'Cloud Computing',
+      'Machine Learning & AI',
+      'Software Engineering',
+      'Product Management',
+      'Business & Strategy',
+      'Marketing & Growth',
+      'Finance & Accounting',
+      'Operations & Supply Chain',
+      'Design & UX',
+      'Cybersecurity',
+      'E-commerce',
+      'Hardware & IoT',
+      'DevOps & Infrastructure',
+      'General Tech',
+    ];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 500),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 24),
+            Text(
+              "What's your specialization?",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppColors.foreground : AppColors.foregroundLight,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Select all that apply — we'll tailor your vocabulary",
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? AppColors.muted : AppColors.mutedLight,
+              ),
             ),
             const SizedBox(height: 24),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: focusAreas.asMap().entries.map((entry) {
+                final area = entry.value;
+                final isSelected = state.focusAreas.contains(area);
+                return GestureDetector(
+                  onTap: () {
+                    ref
+                        .read(onboardingProvider.notifier)
+                        .toggleFocusArea(area);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? (isDark
+                                  ? AppColors.accent
+                                  : AppColors.accentLightMode)
+                              .withValues(alpha: 0.2)
+                          : isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.white.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: isSelected
+                            ? (isDark
+                                ? AppColors.accent
+                                : AppColors.accentLightMode)
+                            : isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.06),
+                        width: isSelected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Text(
+                      area,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w400,
+                        color: isSelected
+                            ? (isDark
+                                ? AppColors.accentLight
+                                : AppColors.accentLightMode)
+                            : (isDark
+                                ? AppColors.foreground
+                                : AppColors.foregroundLight),
+                      ),
+                    ),
+                  ),
+                )
+                    .animate()
+                    .fadeIn(
+                        duration: 300.ms,
+                        delay: Duration(milliseconds: 20 * entry.key))
+                    .scale(
+                        begin: const Offset(0.9, 0.9),
+                        end: const Offset(1, 1),
+                        duration: 300.ms,
+                        delay: Duration(milliseconds: 20 * entry.key));
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-            // Additional Context (optional)
+  // Step 2: Additional Context
+  Widget _buildContextStep(OnboardingState state, bool isDark) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 500),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 24),
+            Center(
+              child: Text(
+                'Tell us more',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  color:
+                      isDark ? AppColors.foreground : AppColors.foregroundLight,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                'Any additional context helps us personalize your vocabulary',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? AppColors.muted : AppColors.mutedLight,
+                ),
+              ),
+            ),
+            const SizedBox(height: 28),
+
             Text(
               'ADDITIONAL CONTEXT (OPTIONAL)',
               style: TextStyle(
@@ -832,7 +517,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   child: TextField(
                     controller: _contextController,
                     maxLength: 500,
-                    maxLines: 3,
+                    maxLines: 4,
                     style: TextStyle(
                       fontSize: 15,
                       color: isDark
@@ -841,7 +526,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     ),
                     decoration: InputDecoration(
                       hintText:
-                          'e.g. "I\'m a software engineer moving to Shanghai" or "Preparing for HSK 4"',
+                          "e.g. 'I'm a PM at a SaaS startup working with Chinese engineering teams' or 'Preparing for a role at ByteDance'",
                       hintStyle: TextStyle(
                         fontSize: 13,
                         color: isDark ? AppColors.muted : AppColors.mutedLight,
@@ -868,7 +553,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  // Step 5: Suggested Words
+  // Step 3: Suggested Words
   Widget _buildSuggestionsStep(OnboardingState state, bool isDark) {
     final selectedCount = state.selectedWordIndices.length;
 
@@ -945,34 +630,86 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
         // Word list or loading spinner
         Expanded(
-          child: state.isLoadingSuggestions
+          child: state.isLoadingSuggestions && state.suggestedWords.isEmpty
               ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: isDark
-                              ? AppColors.accent
-                              : AppColors.accentLightMode,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Generating words...',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color:
+                                isDark ? AppColors.muted : AppColors.mutedLight,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Finding words for you...',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color:
-                              isDark ? AppColors.muted : AppColors.mutedLight,
+                        const SizedBox(height: 16),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: state.totalWordBatches > 0
+                                ? state.wordGenerationProgress /
+                                    state.totalWordBatches
+                                : null,
+                            minHeight: 4,
+                            color: isDark
+                                ? AppColors.accent
+                                : AppColors.accentLightMode,
+                            backgroundColor: isDark
+                                ? Colors.white.withValues(alpha: 0.1)
+                                : Colors.black.withValues(alpha: 0.08),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : Column(
+                  children: [
+                    if (state.isLoadingSuggestions) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 8),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  'Found ${state.suggestedWords.length} of ${state.totalWordBatches * 4} words',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark
+                                        ? AppColors.muted
+                                        : AppColors.mutedLight,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: state.totalWordBatches > 0
+                                    ? state.wordGenerationProgress /
+                                        state.totalWordBatches
+                                    : null,
+                                minHeight: 4,
+                                color: isDark
+                                    ? AppColors.accent
+                                    : AppColors.accentLightMode,
+                                backgroundColor: isDark
+                                    ? Colors.white.withValues(alpha: 0.1)
+                                    : Colors.black.withValues(alpha: 0.08),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  ),
-                )
-              : ListView.builder(
+                    Expanded(
+                      child: ListView.builder(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
                   itemCount: state.suggestedWords.length,
@@ -1066,13 +803,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                           ),
                                         ),
                                         const SizedBox(width: 8),
-                                        Text(
-                                          pinyin,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: isDark
-                                                ? AppColors.accent
-                                                : AppColors.accentLightMode,
+                                        Flexible(
+                                          child: Text(
+                                            pinyin,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: isDark
+                                                  ? AppColors.accent
+                                                  : AppColors.accentLightMode,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -1097,6 +836,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     );
                   },
                 ),
+              ),
+            ],
+          ),
         ),
         // Bottom buttons
         Padding(
@@ -1108,6 +850,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 onTap: state.isSavingWords
                     ? null
                     : () async {
+                        // Cancels any ongoing generation
                         final success = await ref
                             .read(onboardingProvider.notifier)
                             .skipAndComplete();
@@ -1207,7 +950,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _buildNavButtons(OnboardingState state, bool isDark) {
     final isFirst = state.currentStep == 0;
-    final isPreferencesStep = state.currentStep == state.preferencesStep;
+    final isContextStep = state.currentStep == state.contextStep;
 
     // Determine if next is enabled
     bool canProceed;
@@ -1216,10 +959,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         canProceed = state.displayName != null && state.displayName!.isNotEmpty;
         break;
       case 1:
-        canProceed = state.chineseLevel != null;
-        break;
-      case 2:
-        canProceed = state.learningPurposes.isNotEmpty;
+        canProceed = state.focusAreas.isNotEmpty;
         break;
       default:
         canProceed = true;
@@ -1271,7 +1011,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           GestureDetector(
             onTap: canProceed && !state.isSubmitting
                 ? () async {
-                    if (isPreferencesStep) {
+                    if (isContextStep) {
                       // Submit profile + fetch suggestions
                       final success = await ref
                           .read(onboardingProvider.notifier)
@@ -1322,7 +1062,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          isPreferencesStep ? 'Complete Setup' : 'Next',
+                          isContextStep ? 'Complete Setup' : 'Next',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -1331,7 +1071,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                 : (isDark ? AppColors.muted : AppColors.mutedLight),
                           ),
                         ),
-                        if (!isPreferencesStep) ...[
+                        if (!isContextStep) ...[
                           const SizedBox(width: 6),
                           Icon(
                             LucideIcons.arrowRight,

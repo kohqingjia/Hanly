@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/review_card.dart';
+import '../../../models/segment.dart';
 import '../../../widgets/glass_card.dart';
 import '../../../widgets/ruby_text.dart';
 
@@ -38,30 +39,66 @@ class FlashcardWidget extends StatelessWidget {
   }
 
   Widget _buildFront(BuildContext context, bool isDark) {
-    return Column(
+    return ConstrainedBox(
       key: const ValueKey('front'),
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const SizedBox(height: 16),
+      constraints: const BoxConstraints(minHeight: 220),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+        const SizedBox(height: 8),
+        Text(
+          'ENGLISH',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: isDark ? AppColors.muted : AppColors.mutedLight,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 20),
         Text(
           card.word.english,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
             color: isDark ? AppColors.foreground : AppColors.foregroundLight,
             letterSpacing: -0.5,
           ),
         ),
-        const SizedBox(height: 24),
-        Text(
-          'Tap to reveal',
-          style: TextStyle(
-            fontSize: 12,
-            color: isDark ? AppColors.muted : AppColors.mutedLight,
+        if (card.word.meaning != null && card.word.meaning!.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text(
+            card.word.meaning!,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: isDark ? AppColors.muted : AppColors.mutedLight,
+              height: 1.4,
+            ),
+          ),
+        ],
+        const SizedBox(height: 28),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            'Tap to reveal',
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? AppColors.muted : AppColors.mutedLight,
+            ),
           ),
         ),
       ],
+      ),
     );
   }
 
@@ -70,9 +107,11 @@ class FlashcardWidget extends StatelessWidget {
     final hasPinyin =
         card.word.pinyin != null && card.word.pinyin!.isNotEmpty;
 
-    return SingleChildScrollView(
+    return ConstrainedBox(
       key: const ValueKey('back'),
-      child: Column(
+      constraints: const BoxConstraints(minHeight: 220),
+      child: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -161,7 +200,10 @@ class FlashcardWidget extends StatelessWidget {
                 children: [
                   if (card.word.examples.first.segments.isNotEmpty)
                     RubyText(
-                      segments: card.word.examples.first.segments,
+                      segments: Segment.withHighlights(
+                        card.word.examples.first.segments,
+                        card.word.chinese,
+                      ),
                       charSize: 14,
                       pinyinSize: 9,
                     )
@@ -188,6 +230,7 @@ class FlashcardWidget extends StatelessWidget {
             ),
           ],
         ],
+        ),
       ),
     );
   }

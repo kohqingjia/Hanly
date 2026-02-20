@@ -33,15 +33,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { chinese_level, learning_purposes, interests, additional_context } =
-      await req.json();
+    const { focus_areas, additional_context } = await req.json();
 
     const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY") });
 
     const userProfile = [
-      `Chinese level: ${chinese_level || "not specified"}`,
-      `Learning purposes: ${(learning_purposes || []).join(", ") || "general"}`,
-      (interests || []).length ? `Interests/sectors: ${interests.join(", ")}` : null,
+      `Focus areas: ${(focus_areas || []).join(", ") || "general tech"}`,
       additional_context ? `Additional context: ${additional_context}` : null,
     ]
       .filter(Boolean)
@@ -53,9 +50,13 @@ Deno.serve(async (req) => {
       messages: [
         {
           role: "system",
-          content: `You are a language learning profile analyzer. Given a user's learning profile, generate:
-1. "context_summary": A 1-2 sentence summary of who this learner is and what they need (e.g. "Intermediate learner working in tech, focused on professional communication and daily conversation.")
-2. "context_tags": An array of 3-8 flat tags that capture their level, purposes, interests/sectors, and any keywords from their additional context. Tags should be lowercase, single words or short phrases. Examples: "intermediate", "tech", "business", "travel", "hsk4", "software-engineering", "daily-conversation", "food", "sports"
+          content: `You are a professional Chinese vocabulary profile analyzer for users working in or preparing for careers at major Chinese tech companies (Tencent, ByteDance, Alibaba, Huawei, etc.).
+
+These users are already conversationally fluent in Chinese but need to build their technical and business vocabulary for the workplace.
+
+Given a user's profile, generate:
+1. "context_summary": A 1-2 sentence summary of this professional and their vocabulary needs (e.g. "Product manager transitioning to a Chinese tech company, needs technical vocabulary for cross-functional meetings and product discussions.")
+2. "context_tags": An array of 3-8 flat tags that capture their specializations, focus areas, and any keywords from their additional context. Tags should be lowercase, single words or short phrases. Examples: "data-engineering", "product-management", "machine-learning", "cloud-infrastructure", "business-strategy", "fintech", "e-commerce"
 
 Return a JSON object with these two fields only.`,
         },

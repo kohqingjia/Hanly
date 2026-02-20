@@ -1,10 +1,7 @@
 class Profile {
   final String id;
   final String? displayName;
-  final String? ageRange;
-  final String? chineseLevel;
-  final List<String> learningPurposes;
-  final List<String> interests;
+  final List<String> focusAreas;
   final String? additionalContext;
   final String? contextSummary;
   final List<String> contextTags;
@@ -17,10 +14,7 @@ class Profile {
   const Profile({
     required this.id,
     this.displayName,
-    this.ageRange,
-    this.chineseLevel,
-    this.learningPurposes = const [],
-    this.interests = const [],
+    this.focusAreas = const [],
     this.additionalContext,
     this.contextSummary,
     this.contextTags = const [],
@@ -34,13 +28,7 @@ class Profile {
   factory Profile.fromJson(Map<String, dynamic> json) => Profile(
         id: json['id'] as String,
         displayName: json['display_name'] as String?,
-        ageRange: json['age_range'] as String?,
-        chineseLevel: json['chinese_level'] as String?,
-        learningPurposes: (json['learning_purposes'] as List<dynamic>?)
-                ?.map((e) => e as String)
-                .toList() ??
-            [],
-        interests: (json['interests'] as List<dynamic>?)
+        focusAreas: (json['focus_areas'] as List<dynamic>?)
                 ?.map((e) => e as String)
                 .toList() ??
             [],
@@ -62,10 +50,7 @@ class Profile {
   Map<String, dynamic> toJson() => {
         'id': id,
         'display_name': displayName,
-        'age_range': ageRange,
-        'chinese_level': chineseLevel,
-        'learning_purposes': learningPurposes,
-        'interests': interests,
+        'focus_areas': focusAreas,
         'additional_context': additionalContext,
         'context_summary': contextSummary,
         'context_tags': contextTags,

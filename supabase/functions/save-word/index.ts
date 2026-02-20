@@ -52,10 +52,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 1: Check global_words for existing match
+    // Step 1: Check global_words for existing match (chinese + pinyin)
     const { data: existingGlobal } = await serviceClient
       .from("global_words")
-      .select("id, add_count, categories")
+      .select("id, add_count")
       .eq("chinese", chinese)
       .eq("pinyin", pinyin)
       .maybeSingle();
@@ -63,32 +63,23 @@ Deno.serve(async (req) => {
     let globalWordId: string;
 
     if (existingGlobal) {
-      // Increment add_count, merge categories
+      // Increment add_count
       globalWordId = existingGlobal.id;
-      const mergedCategories = [
-        ...new Set([
-          ...(existingGlobal.categories || []),
-          ...(categories || []),
-        ]),
-      ];
       await serviceClient
         .from("global_words")
         .update({
           add_count: (existingGlobal.add_count || 0) + 1,
-          categories: mergedCategories,
           updated_at: new Date().toISOString(),
         })
         .eq("id", globalWordId);
     } else {
-      // Create new global word entry
+      // Create new global word entry (simplified: no segments/categories)
       const { data: newGlobal, error: globalError } = await serviceClient
         .from("global_words")
         .insert({
           chinese,
           pinyin,
-          segments: segments || [],
           meaning: meaning || null,
-          categories: categories || [],
         })
         .select("id")
         .single();
