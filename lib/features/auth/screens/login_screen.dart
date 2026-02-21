@@ -76,7 +76,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final isDesktop = size.width >= 640;
 
     return Scaffold(
-      body: Container(
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(

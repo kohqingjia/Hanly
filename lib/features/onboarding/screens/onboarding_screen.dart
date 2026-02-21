@@ -5,7 +5,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/glass_decoration.dart';
-import 'package:go_router/go_router.dart';
 import '../../../widgets/app_toast.dart';
 import '../../home/providers/flashcard_provider.dart';
 import '../../profile/providers/profile_provider.dart';
@@ -58,7 +57,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     });
 
     return Scaffold(
-      body: Container(
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
@@ -131,13 +132,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         _buildNameAgeStep(state, isDark),
                         _buildFocusAreasStep(state, isDark),
                         _buildContextStep(state, isDark),
-                        _buildSuggestionsStep(state, isDark),
                       ],
                     ),
                   ),
-                  // Navigation buttons (hidden on suggestions step — it has its own)
-                  if (state.currentStep != state.suggestionsStep)
-                    _buildNavButtons(state, isDark),
+                  _buildNavButtons(state, isDark),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -553,406 +551,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  // Step 3: Suggested Words
-  Widget _buildSuggestionsStep(OnboardingState state, bool isDark) {
-    final selectedCount = state.selectedWordIndices.length;
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Column(
-            children: [
-              const SizedBox(height: 8),
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [AppColors.accent, AppColors.accentLight],
-                ).createShader(bounds),
-                child: const Text(
-                  'Words for You',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'We picked these based on your profile.\nSelect the ones you\'d like to learn.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? AppColors.muted : AppColors.mutedLight,
-                  height: 1.4,
-                ),
-              ),
-              if (!state.isLoadingSuggestions &&
-                  state.suggestedWords.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: () =>
-                          ref.read(onboardingProvider.notifier).selectAllWords(),
-                      child: Text(
-                        'Select All',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? AppColors.accent
-                              : AppColors.accentLightMode,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    GestureDetector(
-                      onTap: () => ref
-                          .read(onboardingProvider.notifier)
-                          .deselectAllWords(),
-                      child: Text(
-                        'Deselect All',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? AppColors.muted : AppColors.mutedLight,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-        // Word list or loading spinner
-        Expanded(
-          child: state.isLoadingSuggestions && state.suggestedWords.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Generating words...',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color:
-                                isDark ? AppColors.muted : AppColors.mutedLight,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: state.totalWordBatches > 0
-                                ? state.wordGenerationProgress /
-                                    state.totalWordBatches
-                                : null,
-                            minHeight: 4,
-                            color: isDark
-                                ? AppColors.accent
-                                : AppColors.accentLightMode,
-                            backgroundColor: isDark
-                                ? Colors.white.withValues(alpha: 0.1)
-                                : Colors.black.withValues(alpha: 0.08),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : Column(
-                  children: [
-                    if (state.isLoadingSuggestions) ...[
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 8),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  'Found ${state.suggestedWords.length} of ${state.totalWordBatches * 4} words',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isDark
-                                        ? AppColors.muted
-                                        : AppColors.mutedLight,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: LinearProgressIndicator(
-                                value: state.totalWordBatches > 0
-                                    ? state.wordGenerationProgress /
-                                        state.totalWordBatches
-                                    : null,
-                                minHeight: 4,
-                                color: isDark
-                                    ? AppColors.accent
-                                    : AppColors.accentLightMode,
-                                backgroundColor: isDark
-                                    ? Colors.white.withValues(alpha: 0.1)
-                                    : Colors.black.withValues(alpha: 0.08),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    Expanded(
-                      child: ListView.builder(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                  itemCount: state.suggestedWords.length,
-                  itemBuilder: (context, index) {
-                    final word = state.suggestedWords[index];
-                    final isSelected =
-                        state.selectedWordIndices.contains(index);
-                    final chinese = word['chinese'] as String? ?? '';
-                    final pinyin = word['pinyin'] as String? ?? '';
-                    final english = word['english'] as String? ?? '';
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: GestureDetector(
-                        onTap: () => ref
-                            .read(onboardingProvider.notifier)
-                            .toggleWordSelection(index),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? (isDark
-                                        ? AppColors.accent
-                                        : AppColors.accentLightMode)
-                                    .withValues(alpha: 0.15)
-                                : isDark
-                                    ? Colors.white.withValues(alpha: 0.05)
-                                    : Colors.white.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected
-                                  ? (isDark
-                                      ? AppColors.accent
-                                      : AppColors.accentLightMode)
-                                  : isDark
-                                      ? Colors.white.withValues(alpha: 0.08)
-                                      : Colors.black.withValues(alpha: 0.06),
-                              width: isSelected ? 1.5 : 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              // Checkbox indicator
-                              AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 22,
-                                height: 22,
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? (isDark
-                                          ? AppColors.accent
-                                          : AppColors.accentLightMode)
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? (isDark
-                                            ? AppColors.accent
-                                            : AppColors.accentLightMode)
-                                        : isDark
-                                            ? Colors.white
-                                                .withValues(alpha: 0.2)
-                                            : Colors.black
-                                                .withValues(alpha: 0.15),
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: isSelected
-                                    ? const Icon(LucideIcons.check,
-                                        size: 14, color: Colors.white)
-                                    : null,
-                              ),
-                              const SizedBox(width: 14),
-                              // Word info
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          chinese,
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w600,
-                                            color: isDark
-                                                ? AppColors.foreground
-                                                : AppColors.foregroundLight,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Flexible(
-                                          child: Text(
-                                            pinyin,
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: isDark
-                                                  ? AppColors.accent
-                                                  : AppColors.accentLightMode,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      english,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: isDark
-                                            ? AppColors.muted
-                                            : AppColors.mutedLight,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Bottom buttons
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          child: Row(
-            children: [
-              // Skip button
-              GestureDetector(
-                onTap: state.isSavingWords
-                    ? null
-                    : () async {
-                        // Cancels any ongoing generation
-                        final success = await ref
-                            .read(onboardingProvider.notifier)
-                            .skipAndComplete();
-                        if (success && mounted) {
-                          ref.invalidate(profileProvider);
-                          ref.invalidate(flashcardNotifierProvider);
-                          await Future.delayed(const Duration(milliseconds: 100));
-                          if (mounted) context.go('/');
-                        }
-                      },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.black.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Skip',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: isDark
-                          ? AppColors.foreground
-                          : AppColors.foregroundLight,
-                    ),
-                  ),
-                ),
-              ),
-              const Spacer(),
-              // Add selected button
-              GestureDetector(
-                onTap: state.isSavingWords || state.isLoadingSuggestions
-                    ? null
-                    : () async {
-                        final success = await ref
-                            .read(onboardingProvider.notifier)
-                            .saveSelectedAndComplete();
-                        if (success && mounted) {
-                          ref.invalidate(profileProvider);
-                          ref.invalidate(flashcardNotifierProvider);
-                          await Future.delayed(const Duration(milliseconds: 100));
-                          if (mounted) context.go('/');
-                        } else if (!success && mounted) {
-                          AppToast.show(
-                            context,
-                            message: state.error ?? 'Something went wrong',
-                            type: ToastType.error,
-                          );
-                        }
-                      },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.accent, AppColors.accentLight],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.accent.withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: state.isSavingWords
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          selectedCount > 0
-                              ? 'Add $selectedCount & Start'
-                              : 'Get Started',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildNavButtons(OnboardingState state, bool isDark) {
     final isFirst = state.currentStep == 0;
     final isContextStep = state.currentStep == state.contextStep;
 
-    // Determine if next is enabled
     bool canProceed;
     switch (state.currentStep) {
       case 0:
@@ -1012,11 +614,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             onTap: canProceed && !state.isSubmitting
                 ? () async {
                     if (isContextStep) {
-                      // Submit profile + fetch suggestions
                       final success = await ref
                           .read(onboardingProvider.notifier)
-                          .submitAndFetchSuggestions();
-                      if (!success && mounted) {
+                          .submitAndComplete();
+                      if (success && mounted) {
+                        ref.invalidate(profileProvider);
+                        ref.invalidate(flashcardNotifierProvider);
+                      } else if (!success && mounted) {
                         AppToast.show(
                           context,
                           message: state.error ?? 'Something went wrong',

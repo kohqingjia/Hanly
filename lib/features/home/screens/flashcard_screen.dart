@@ -19,7 +19,9 @@ class FlashcardScreen extends ConsumerWidget {
     final state = ref.watch(flashcardNotifierProvider);
 
     return Scaffold(
-      body: Container(
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
@@ -90,18 +92,27 @@ class FlashcardScreen extends ConsumerWidget {
                             .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: Text(
-                        state.isLoading
-                            ? '...'
-                            : '${state.dueCount} remaining',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: isDark
-                              ? AppColors.accentLight
-                              : AppColors.accentLightMode,
-                        ),
-                      ),
+                      child: state.isLoading
+                          ? SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: isDark
+                                    ? AppColors.accentLight
+                                    : AppColors.accentLightMode,
+                              ),
+                            )
+                          : Text(
+                              '${state.dueCount} remaining',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: isDark
+                                    ? AppColors.accentLight
+                                    : AppColors.accentLightMode,
+                              ),
+                            ),
                     ),
                   ],
                 ),

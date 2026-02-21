@@ -25,7 +25,9 @@ class HomeScreen extends ConsumerWidget {
     final dueCount = flashcardState.dueCount;
 
     return Scaffold(
-      body: Container(
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(

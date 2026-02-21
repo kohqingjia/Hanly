@@ -48,7 +48,9 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     });
 
     return Scaffold(
-      body: Container(
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(

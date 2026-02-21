@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:csv/csv.dart';
+import 'package:excel/excel.dart' hide Border;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/providers/supabase_provider.dart';
@@ -9,7 +12,10 @@ import '../../../widgets/glass_card.dart';
 import '../../../widgets/app_toast.dart';
 import '../../../models/profile.dart';
 import '../providers/profile_provider.dart';
+import '../providers/import_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../home/providers/flashcard_provider.dart';
+import '../../dictionary/providers/dictionary_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -22,11 +28,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isEditingContext = false;
   List<String> _editFocusAreas = [];
   final _editContextController = TextEditingController();
+  final _editSummaryController = TextEditingController();
   double? _sliderValue;
 
   @override
   void dispose() {
     _editContextController.dispose();
+    _editSummaryController.dispose();
     super.dispose();
   }
 
@@ -36,8 +44,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final profileAsync = ref.watch(profileProvider);
     final isDesktop = MediaQuery.of(context).size.width >= 640;
 
+    ref.listen(importProvider, (prev, next) {
+      if (prev?.isImporting == true && !next.isImporting && next.isComplete) {
+        ref.invalidate(flashcardNotifierProvider);
+        ref.invalidate(dictionaryNotifierProvider);
+      }
+    });
+
     return Scaffold(
-      body: Container(
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
@@ -173,6 +190,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             .animate()
                             .fadeIn(duration: 400.ms, delay: 300.ms)
                             .slideY(begin: 0.03, end: 0, duration: 400.ms, delay: 300.ms),
+                        const SizedBox(height: 16),
+
+                        // Import card
+                        _buildImportCard(isDark)
+                            .animate()
+                            .fadeIn(duration: 400.ms, delay: 350.ms)
+                            .slideY(begin: 0.03, end: 0, duration: 400.ms, delay: 350.ms),
                         const SizedBox(height: 24),
 
                         // Sign out
@@ -224,6 +248,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       _editFocusAreas = List<String>.from(profile.focusAreas);
                       _editContextController.text =
                           profile.additionalContext ?? '';
+                      _editSummaryController.text =
+                          profile.contextSummary ?? '';
                     }
                   });
                 },
@@ -335,29 +361,92 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 color: isDark ? AppColors.muted : AppColors.mutedLight),
           ),
         ),
+        const SizedBox(height: 16),
+        Text(
+          'AI SUMMARY',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: isDark ? AppColors.muted : AppColors.mutedLight,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Edit the AI-generated summary directly, or tap "Regenerate" to have it rewritten.',
+          style: TextStyle(
+            fontSize: 11,
+            color: isDark ? AppColors.muted : AppColors.mutedLight,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _editSummaryController,
+          maxLength: 300,
+          maxLines: 3,
+          style: TextStyle(
+            fontSize: 13,
+            color: isDark ? AppColors.foreground : AppColors.foregroundLight,
+            fontStyle: FontStyle.italic,
+          ),
+          decoration: InputDecoration(
+            hintText: 'AI-generated summary',
+            hintStyle: TextStyle(
+              fontSize: 13,
+              color: isDark ? AppColors.muted : AppColors.mutedLight,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
         const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () async {
-              final result = await ref
-                  .read(profileUpdateProvider.notifier)
-                  .regenerateContext(
-                    focusAreas: _editFocusAreas,
-                    additionalContext: _editContextController.text.isEmpty
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () async {
+                  final result = await ref
+                      .read(profileUpdateProvider.notifier)
+                      .regenerateContext(
+                        focusAreas: _editFocusAreas,
+                        additionalContext: _editContextController.text.isEmpty
+                            ? null
+                            : _editContextController.text,
+                      );
+                  if (mounted) {
+                    setState(() => _isEditingContext = false);
+                    if (result != null) {
+                      AppToast.show(context,
+                          message: 'Context regenerated!', type: ToastType.success);
+                    }
+                  }
+                },
+                child: const Text('Regenerate'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () async {
+                  await ref.read(profileUpdateProvider.notifier).updateProfile({
+                    'focus_areas': _editFocusAreas,
+                    'additional_context': _editContextController.text.isEmpty
                         ? null
                         : _editContextController.text,
-                  );
-              if (mounted) {
-                setState(() => _isEditingContext = false);
-                if (result != null) {
-                  AppToast.show(context,
-                      message: 'Context updated!', type: ToastType.success);
-                }
-              }
-            },
-            child: const Text('Save & Regenerate Context'),
-          ),
+                    'context_summary': _editSummaryController.text.isEmpty
+                        ? null
+                        : _editSummaryController.text,
+                  });
+                  if (mounted) {
+                    setState(() => _isEditingContext = false);
+                    AppToast.show(context,
+                        message: 'Context saved!', type: ToastType.success);
+                  }
+                },
+                child: const Text('Save'),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -467,6 +556,327 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           color: isDark ? AppColors.accentLight : AppColors.accentLightMode,
         ),
       ),
+    );
+  }
+
+  Widget _buildImportCard(bool isDark) {
+    final importState = ref.watch(importProvider);
+
+    return GlassCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'VOCABULARY IMPORT',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: isDark ? AppColors.muted : AppColors.mutedLight,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (importState.isImporting) ...[
+            Row(
+              children: [
+                Icon(LucideIcons.loader, size: 16,
+                    color: isDark ? AppColors.accent : AppColors.accentLightMode)
+                  .animate(onPlay: (c) => c.repeat())
+                  .rotate(duration: const Duration(milliseconds: 1000)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Processing ${importState.processedRows} of ${importState.totalRows} rows'
+                    ' · ${importState.savedWords} words saved',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? AppColors.foreground : AppColors.foregroundLight,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: importState.totalRows > 0
+                    ? importState.processedRows / importState.totalRows
+                    : null,
+                minHeight: 4,
+                color: isDark ? AppColors.accent : AppColors.accentLightMode,
+                backgroundColor: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.08),
+              ),
+            ),
+          ] else if (importState.isComplete) ...[
+            Row(
+              children: [
+                Icon(LucideIcons.checkCircle, size: 16,
+                    color: isDark ? AppColors.accent : AppColors.accentLightMode),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Import complete — ${importState.savedWords} words added',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? AppColors.foreground : AppColors.foregroundLight,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => ref.read(importProvider.notifier).dismiss(),
+                  child: Icon(LucideIcons.x, size: 16,
+                      color: isDark ? AppColors.muted : AppColors.mutedLight),
+                ),
+              ],
+            ),
+          ] else if (importState.error != null) ...[
+            Row(
+              children: [
+                Icon(LucideIcons.alertCircle, size: 16,
+                    color: isDark ? AppColors.danger : AppColors.dangerLight),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Import failed. Tap to retry.',
+                    style: TextStyle(fontSize: 13,
+                        color: isDark ? AppColors.foreground : AppColors.foregroundLight),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => ref.read(importProvider.notifier).dismiss(),
+                  child: Icon(LucideIcons.x, size: 16,
+                      color: isDark ? AppColors.muted : AppColors.mutedLight),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showImportSheet(isDark),
+                icon: const Icon(LucideIcons.upload, size: 16),
+                label: const Text('Import Words'),
+              ),
+            ),
+          ] else ...[
+            Text(
+              'Upload a CSV or Excel file to import your vocabulary. The AI will map each row into the correct format.',
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? AppColors.muted : AppColors.mutedLight,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showImportSheet(isDark),
+                icon: const Icon(LucideIcons.upload, size: 16),
+                label: const Text('Import Words'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showImportSheet(bool isDark) async {
+    List<List<dynamic>>? parsedRows;
+    List<String>? headers;
+    String? fileName;
+    bool sheetIsLoading = false;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.backgroundElevated : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              padding: EdgeInsets.fromLTRB(
+                24, 20, 24,
+                MediaQuery.of(ctx).viewInsets.bottom + 32,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36, height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.15)
+                            : Colors.black.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Import Vocabulary',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppColors.foreground : AppColors.foregroundLight,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Upload a CSV or Excel (.xlsx) file. The AI will read each row and convert it to the correct format — any column layout works.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? AppColors.muted : AppColors.mutedLight,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (sheetIsLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else if (parsedRows == null) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          setSheetState(() => sheetIsLoading = true);
+                          try {
+                            final result = await FilePicker.platform.pickFiles(
+                              type: FileType.custom,
+                              allowedExtensions: ['csv', 'xlsx'],
+                              withData: true,
+                            );
+                            if (result != null && result.files.single.bytes != null) {
+                              final file = result.files.single;
+                              final bytes = file.bytes!;
+                              final ext = file.extension?.toLowerCase();
+
+                              List<List<dynamic>> rows = [];
+
+                              if (ext == 'csv') {
+                                final content = String.fromCharCodes(bytes);
+                                rows = const CsvToListConverter(eol: '\n').convert(content);
+                              } else if (ext == 'xlsx') {
+                                final excel = Excel.decodeBytes(bytes);
+                                final sheet = excel.tables.values.first;
+                                rows = sheet.rows.map((row) =>
+                                  row.map((cell) => cell?.value?.toString() ?? '').toList()
+                                ).toList();
+                              }
+
+                              // Filter empty rows
+                              rows = rows.where((r) => r.any((c) => c.toString().trim().isNotEmpty)).toList();
+
+                              if (rows.isNotEmpty) {
+                                final hdrs = rows.first.map((c) => c.toString()).toList();
+                                final dataRows = rows.sublist(1);
+                                setSheetState(() {
+                                  headers = hdrs;
+                                  parsedRows = dataRows;
+                                  fileName = file.name;
+                                  sheetIsLoading = false;
+                                });
+                              } else {
+                                setSheetState(() => sheetIsLoading = false);
+                              }
+                            } else {
+                              setSheetState(() => sheetIsLoading = false);
+                            }
+                          } catch (e) {
+                            setSheetState(() => sheetIsLoading = false);
+                          }
+                        },
+                        icon: const Icon(LucideIcons.filePlus, size: 16),
+                        label: const Text('Pick File (CSV or XLSX)'),
+                      ),
+                    ),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: (isDark ? AppColors.accent : AppColors.accentLightMode)
+                            .withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: (isDark ? AppColors.accent : AppColors.accentLightMode)
+                              .withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(LucideIcons.fileText, size: 16,
+                                  color: isDark ? AppColors.accent : AppColors.accentLightMode),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  fileName ?? 'File',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? AppColors.foreground : AppColors.foregroundLight,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${parsedRows!.length} rows · Columns: ${headers!.take(4).join(', ')}${headers!.length > 4 ? '...' : ''}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? AppColors.muted : AppColors.mutedLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          ref.read(importProvider.notifier).startImport(
+                            parsedRows!,
+                            headers!,
+                          );
+                        },
+                        child: Text('Start Import (${parsedRows!.length} rows)'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: () => setSheetState(() {
+                          parsedRows = null;
+                          headers = null;
+                          fileName = null;
+                        }),
+                        child: const Text('Pick a different file'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

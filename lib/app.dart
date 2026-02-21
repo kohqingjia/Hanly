@@ -18,8 +18,8 @@ class HanlyApp extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
-      themeAnimationDuration: const Duration(milliseconds: 400),
-      themeAnimationCurve: Curves.easeInOut,
+      themeAnimationDuration: const Duration(milliseconds: 600),
+      themeAnimationCurve: Curves.easeInOutCubic,
       routerConfig: router,
     );
   }
